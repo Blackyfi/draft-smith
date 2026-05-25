@@ -29,20 +29,31 @@ struct Image {
     full: String,
 }
 
-/// A resolved champion lookup index, keyed by numeric champion key.
+/// A resolved champion lookup index.
 ///
-/// The Live Client identifies champions by this numeric ID, so `by_key` is the primary lookup.
-/// A name index (for the cases where only a name string is available) is added in M2 alongside
-/// its first consumer.
+/// The Live Client identifies champions by numeric key, so `by_key` is the primary lookup. The
+/// frontend, however, only ever has a champion's **display name** (the `/allgamedata` payload and
+/// the engine's `Recommendation` carry names, not keys), so a name index backs the champion-icon
+/// commands (M4, the first consumer of name lookup). Display names are unique in DDragon.
 #[derive(Debug, Clone, Default)]
 pub struct ChampionIndex {
     by_key: HashMap<u32, ChampionMeta>,
+    /// Display name → numeric key, so name lookups reuse the `by_key` store.
+    name_to_key: HashMap<String, u32>,
 }
 
 impl ChampionIndex {
     /// Looks up a champion by its numeric key (the Live Client ID space).
     pub fn by_key(&self, key: u32) -> Option<&ChampionMeta> {
         self.by_key.get(&key)
+    }
+
+    /// Looks up a champion by its display name (e.g. "Ahri", "Wukong"). Used where only a name is
+    /// available — champion icons on the FE.
+    pub fn by_name(&self, name: &str) -> Option<&ChampionMeta> {
+        self.name_to_key
+            .get(name)
+            .and_then(|key| self.by_key.get(key))
     }
 
     /// Number of resolved champions.
@@ -58,6 +69,7 @@ impl ChampionIndex {
 pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
     let file: ChampionFile = serde_json::from_slice(bytes)?;
     let mut by_key = HashMap::with_capacity(file.data.len());
+    let mut name_to_key = HashMap::with_capacity(file.data.len());
     for (data_key, value) in file.data {
         let raw: RawChampion = match serde_json::from_value(value) {
             Ok(raw) => raw,
@@ -73,6 +85,7 @@ pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
             );
             continue;
         };
+        name_to_key.insert(raw.name.clone(), key);
         by_key.insert(
             key,
             ChampionMeta {
@@ -84,7 +97,10 @@ pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
             },
         );
     }
-    Ok(ChampionIndex { by_key })
+    Ok(ChampionIndex {
+        by_key,
+        name_to_key,
+    })
 }
 
 #[cfg(test)]
@@ -119,6 +135,17 @@ mod tests {
         let wukong = index.by_key(62).unwrap();
         assert_eq!(wukong.id, "MonkeyKing");
         assert_eq!(wukong.name, "Wukong");
+    }
+
+    #[test]
+    fn looks_up_by_display_name() {
+        let index = parse_champions(SAMPLE).unwrap();
+        // The FE only knows display names; resolve them to the same entries as `by_key`.
+        assert_eq!(index.by_name("Ahri").unwrap().image, "Ahri.png");
+        // Display name, not the DDragon id: "Wukong" resolves, "MonkeyKing" does not.
+        assert_eq!(index.by_name("Wukong").unwrap().image, "MonkeyKing.png");
+        assert!(index.by_name("MonkeyKing").is_none());
+        assert!(index.by_name("Nobody").is_none());
     }
 
     #[test]

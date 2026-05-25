@@ -36,6 +36,9 @@ These are correctness/compliance invariants, not preferences. Violating any is a
 > The scaffold lands in M0; these are the canonical commands once it exists.
 - Dev: `npm run tauri dev`
 - Build: `npm run tauri build`
+- Mock live game (verify the FE↔Rust loop without League): `npm run mock` serves the captured
+  `/allgamedata` fixture over TLS on `127.0.0.1:2999` and walks a scripted enemy-purchase timeline,
+  so `npm run tauri dev` shows the build re-ranking live. Stop League first (it owns that port).
 - Rust test (single): `cargo test <name>` in `src-tauri/`; snapshot review: `cargo insta review`
 - TS test: `npm run test`; single: `npm run test -- <pattern>`
 - Lint/format: `cargo clippy --all-targets -- -D warnings`, `cargo fmt`, `npm run lint`
