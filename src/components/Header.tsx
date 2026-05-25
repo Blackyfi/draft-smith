@@ -50,7 +50,11 @@ export function Header({ status }: { status: ConnectionStatus }) {
       <div className="flex min-w-0 items-center gap-2">
         {inGame && champion ? (
           <>
-            <ChampionAvatar name={championName} className="size-8" />
+            <ChampionAvatar
+              name={champion}
+              label={championName}
+              className="size-8"
+            />
             <span className="truncate text-sm font-semibold tracking-tight">
               {championName}
             </span>

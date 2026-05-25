@@ -10,11 +10,16 @@ import type { EnemyThreatView } from "@/types";
  * badges — the *why* behind the build, made visible. Each signal badge pairs color + icon + text.
  */
 export function EnemyRow({ threat }: { threat: EnemyThreatView }) {
-  // `threat.champion` is the Live Client id ("Kaisa"); show the friendly name ("Kai'Sa").
+  // `threat.champion` is the Live Client id ("Kaisa"); the icon resolves by id, the text shows the
+  // friendly name ("Kai'Sa").
   const champion = useChampionName(threat.champion);
   return (
     <li className="flex items-center gap-2.5 rounded-md px-1 py-1.5">
-      <ChampionAvatar name={champion} className="size-8" />
+      <ChampionAvatar
+        name={threat.champion}
+        label={champion}
+        className="size-8"
+      />
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-medium">{champion}</span>
