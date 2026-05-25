@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "DraftSmith — live, matchup-aware item recommendations for League of Legends"
 authors = ["DraftSmith"]
 license = ""
-repository = ""
+repository = "https://github.com/Blackyfi/draft-smith"
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -25,12 +25,22 @@ log = "0.4"
 # (convertFileSrc), scoped to `$APPDATA/ddragon/**` in tauri.conf.json (M4 icon loading).
 tauri = { version = "2.11.2", features = ["tray-icon", "protocol-asset"] }
 tauri-plugin-log = "2"
+# M6 packaging: a native dialog for the "update available / up to date" prompt. The updater
+# plugin itself is desktop-only (see target section below); the relaunch after install uses the
+# built-in `AppHandle::restart`, so no extra process plugin is needed.
+tauri-plugin-dialog = "2"
 # DDragon HTTP client: kept separate from the M2 Live Client client. reqwest 0.13's default TLS
 # is rustls validated by the OS trust store (rustls-platform-verifier) — no system OpenSSL.
 # `json` adds typed body (de)serialization.
 reqwest = { version = "0.13", features = ["json"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "time"] }
 thiserror = "2"
+
+# Auto-updater is desktop-only (no in-app update on mobile app stores). This predicate is Tauri's
+# definition of `desktop` (= not mobile); keep it in lockstep with the `#[cfg(desktop)]` gates in
+# `lib.rs`, `tray.rs`, and `updater.rs` so the crate and its uses are enabled on the same targets.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
 
 [dev-dependencies]
 tempfile = "3"

@@ -1,0 +1,85 @@
+name: Release
+
+# Tag a release to build + publish the signed installer and the updater manifest:
+#   git tag v0.1.0 && git push origin v0.1.0
+# `workflow_dispatch` allows a manual run for testing the pipeline.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # tauri-action creates the GitHub Release and uploads artifacts
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        # v1 ships Windows only. The matrix is kept so macOS/Linux can be added without restructuring.
+        include:
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    # Job-level env so step `if:` conditions can read it — a step's own `env:` block is NOT in
+    # scope for that step's `if:`, which evaluates first.
+    env:
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Import the code-signing certificate into the per-user store so the NSIS bundler can sign
+      # by the thumbprint in the release overlay. Runs only when the cert secret is configured.
+      - name: Import code-signing certificate (Windows)
+        if: matrix.platform == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          $pfx = [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $path = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [System.IO.File]::WriteAllBytes($path, $pfx)
+          $pwd = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          Import-PfxCertificate -FilePath $path -CertStoreLocation Cert:\CurrentUser\My -Password $pwd
+          Remove-Item $path
+
+      # Apply the signing overlay ONLY when the cert was imported. Without it, `signtool` would be
+      # asked to sign by a thumbprint that isn't in the store and the bundle step would fail; this
+      # keeps an unconfigured fork's release build producing a (working) unsigned installer.
+      - name: Resolve build args
+        shell: bash
+        run: |
+          if [ -n "$WINDOWS_CERTIFICATE" ]; then
+            echo "TAURI_ARGS=--config src-tauri/tauri.release.conf.json" >> "$GITHUB_ENV"
+          else
+            echo "TAURI_ARGS=" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater signing — minisign private key + its password (see README §Auto-updater).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "DraftSmith ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download and install. The app auto-updates from this release."
+          releaseDraft: true
+          prerelease: false
+          # Emits latest.json (the updater manifest the app polls) alongside the installer.
+          includeUpdaterJson: true
+          args: ${{ env.TAURI_ARGS }}
