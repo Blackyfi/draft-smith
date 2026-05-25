@@ -26,7 +26,8 @@ These are correctness/compliance invariants, not preferences. Violating any is a
 
 ## Stack (see PROJECT_SPEC.md §2 for rationale)
 - **Shell:** Tauri v2 (v2.10+) — Rust core in `src-tauri/`.
-- **Frontend:** React 18 + TypeScript (strict) + Vite + Tailwind CSS v4 + shadcn/ui.
+- **Frontend:** React 19 + TypeScript (strict) + Vite + Tailwind CSS v4 + shadcn/ui.
+  (PROJECT_SPEC §2 says React 18; intentionally on 19 — current stable — by owner decision.)
 - **FE state:** TanStack Query (Live Client polling lifecycle) + Zustand (UI state); Framer Motion; lucide-react.
 - **Rust:** tokio (async poller), reqwest + serde (HTTP/JSON), insta (engine snapshot tests).
 - **Tests:** `cargo test` + insta (Rust); Vitest + React Testing Library (TS).
