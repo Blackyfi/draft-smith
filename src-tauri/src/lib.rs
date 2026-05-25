@@ -90,6 +90,7 @@ pub fn run() {
             commands::get_item_icon,
             commands::get_champion_icon,
             commands::get_champion_icon_by_name,
+            commands::get_champion_display_name,
             commands::get_settings,
             commands::set_settings,
             commands::reset_ddragon_cache,

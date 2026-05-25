@@ -26,3 +26,19 @@ export function useChampionIcon(name: string | null | undefined) {
     retry: false,
   });
 }
+
+/**
+ * Resolves a champion's friendly display name ("Kai'Sa") from the Live Client id ("Kaisa").
+ * Returns the original string until resolved, and as a permanent fallback when DDragon data is
+ * unavailable or the champion is unknown — so the UI always shows *something* sensible.
+ */
+export function useChampionName(name: string | null | undefined): string {
+  const { data } = useQuery({
+    queryKey: ["champion-name", name],
+    queryFn: () => api.getChampionDisplayName(name as string),
+    enabled: name != null && name.length > 0,
+    staleTime: Infinity,
+    retry: false,
+  });
+  return data ?? name ?? "";
+}

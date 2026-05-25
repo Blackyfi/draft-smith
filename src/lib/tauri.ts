@@ -63,6 +63,13 @@ export const api = {
     toAssetUrl(
       await invoke<string | null>("get_champion_icon_by_name", { name }),
     ),
+
+  /**
+   * Resolves a champion's friendly display name ("Kai'Sa") from the Live Client id ("Kaisa").
+   * `null` if DDragon data hasn't loaded or the champion is unknown — callers fall back to the id.
+   */
+  getChampionDisplayName: (name: string) =>
+    invoke<string | null>("get_champion_display_name", { name }),
 };
 
 /**

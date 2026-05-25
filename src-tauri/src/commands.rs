@@ -154,6 +154,21 @@ pub async fn get_champion_icon_by_name(
     .await
 }
 
+/// Resolves a champion's human display name (e.g. "Kai'Sa", "Lee Sin", "Wukong") from the
+/// id-or-name the live payload carries (e.g. "Kaisa", "LeeSin", "MonkeyKing"). Lets the FE show a
+/// friendly label instead of the raw Live Client id. Returns `Ok(None)` if DDragon data has not
+/// loaded or the champion is unknown, so the caller can fall back to the raw string.
+#[tauri::command]
+pub async fn get_champion_display_name(
+    name: String,
+    state: State<'_, DdragonState>,
+) -> Result<Option<String>, String> {
+    let guard = state.data.read().await;
+    Ok(guard
+        .as_ref()
+        .and_then(|data| data.champions.by_name_or_id(&name).map(|c| c.name.clone())))
+}
+
 /// Shared body for the icon commands: pick the icon filename + patch from loaded state (releasing
 /// the read lock before any network I/O), then resolve it to a cached path.
 async fn resolve_icon(
