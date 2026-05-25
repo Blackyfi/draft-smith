@@ -11,9 +11,11 @@
 use crate::engine::{self, EngineInput};
 use crate::live_client::model::AllGameData;
 use crate::live_client::LiveClient;
+use crate::model::settings::{MAX_POLL_INTERVAL_SECS, MIN_POLL_INTERVAL_SECS};
 use crate::model::{ConnectionStatus, GameStateSummary, Recommendation};
 use crate::rules::RuleSet;
-use crate::state::LiveState;
+use crate::state::{LiveState, SettingsState};
+use crate::tray;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -93,7 +95,22 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
             return;
         }
     };
-    tauri::async_runtime::spawn(run_loop(app, client, DEFAULT_POLL_INTERVAL));
+    tauri::async_runtime::spawn(run_loop(app, client));
+}
+
+/// Reads the configured poll cadence from [`SettingsState`], clamped to the in-spec range. Falls
+/// back to [`DEFAULT_POLL_INTERVAL`] if settings aren't managed yet (shouldn't happen in
+/// production, where settings are registered before the poller spawns).
+fn poll_interval<R: Runtime>(app: &AppHandle<R>) -> Duration {
+    app.try_state::<SettingsState>()
+        .map(|s| {
+            let secs = s
+                .current()
+                .poll_interval_secs
+                .clamp(MIN_POLL_INTERVAL_SECS, MAX_POLL_INTERVAL_SECS);
+            Duration::from_secs(u64::from(secs))
+        })
+        .unwrap_or(DEFAULT_POLL_INTERVAL)
 }
 
 /// Loads the embedded engine rule set once for the poller. A parse failure (only possible from a
@@ -112,11 +129,13 @@ fn load_rules() -> Option<RuleSet> {
 /// The poll loop: probe, react, sleep, forever. The per-iteration work lives in [`poll_once`],
 /// which is decoupled from Tauri (operates on `&LiveState` + an emit sink) so it can be driven in
 /// tests against a mock server without the infinite loop or a Tauri runtime.
-async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient, interval: Duration) {
+async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
     let state = app.state::<LiveState>();
     let rules = load_rules();
     let mut emit = |event: PollEvent| match event {
         PollEvent::ConnectionStatus(status) => {
+            // Reflect the status in the tray tooltip (PROJECT_SPEC §6.2), then notify the FE.
+            tray::set_status(&app, status);
             let _ = app.emit("connection-status", status);
         }
         PollEvent::GameStateChanged(summary) => {
@@ -140,7 +159,8 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient, interval: D
             &mut emit,
         )
         .await;
-        tokio::time::sleep(interval).await;
+        // Read the cadence live each iteration so a settings change takes effect without a restart.
+        tokio::time::sleep(poll_interval(&app)).await;
     }
 }
 

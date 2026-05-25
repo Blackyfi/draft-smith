@@ -1,3 +1,4 @@
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { Dashboard } from "@/components/Dashboard";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -7,6 +8,9 @@ import { NoGame } from "@/components/states/NoGame";
 import { useBuildShiftToasts } from "@/hooks/useBuildShiftToasts";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useRecommendation } from "@/hooks/useRecommendation";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
+import { useThemeSync } from "@/hooks/useThemeSync";
+import { useUiStore } from "@/store/ui";
 import type { ConnectionStatus, Recommendation } from "@/types";
 
 function App() {
@@ -14,6 +18,11 @@ function App() {
   const { data: recommendation } = useRecommendation();
   // Toast build shifts as the engine re-ranks (mounted once, app-wide).
   useBuildShiftToasts();
+  // Apply the theme from settings to document.documentElement.
+  useThemeSync();
+  // Open the settings dialog when the tray "Settings" entry fires.
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  useTauriEvent("open-settings", () => setSettingsOpen(true));
 
   // While the first status resolves, present it as "Connecting…" (a real, labeled state) rather
   // than an ambiguous placeholder.
@@ -28,6 +37,7 @@ function App() {
         {renderMain(current, recommendation)}
       </main>
       <Footer />
+      <SettingsDialog />
     </div>
   );
 }

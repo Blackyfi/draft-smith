@@ -5,6 +5,7 @@
 //! ```text
 //! <root>/
 //!   version              # plain-text patch marker, e.g. "14.10.1"
+//!   locale               # plain-text locale marker, e.g. "en_US"
 //!   item.json            # raw DDragon item.json
 //!   champion.json        # raw DDragon champion.json
 //!   icons/item/<f>.png   # lazily downloaded item icons
@@ -18,6 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const VERSION_MARKER: &str = "version";
+const LOCALE_MARKER: &str = "locale";
 const ITEM_JSON: &str = "item.json";
 const CHAMPION_JSON: &str = "champion.json";
 
@@ -63,9 +65,23 @@ impl DdragonCache {
         self.item_json_path().is_file() && self.champion_json_path().is_file()
     }
 
+    /// The Data Dragon text locale recorded in the cache, if any. An empty/whitespace marker (or an
+    /// older cache written before locale tracking existed) reads as `None`.
+    pub fn cached_locale(&self) -> Option<String> {
+        let raw = fs::read_to_string(self.root.join(LOCALE_MARKER)).ok()?;
+        let trimmed = raw.trim();
+        (!trimmed.is_empty()).then(|| trimmed.to_string())
+    }
+
     /// Records the patch version marker (written last, after the data it describes).
     pub fn write_version(&self, version: &str) -> Result<()> {
         self.write_bytes(&self.root.join(VERSION_MARKER), version.as_bytes())
+    }
+
+    /// Records the locale the cached blobs were downloaded for, so a later run can detect a locale
+    /// switch on the same patch and force a re-download.
+    pub fn write_locale(&self, locale: &str) -> Result<()> {
+        self.write_bytes(&self.root.join(LOCALE_MARKER), locale.as_bytes())
     }
 
     pub fn write_item_json(&self, bytes: &[u8]) -> Result<()> {

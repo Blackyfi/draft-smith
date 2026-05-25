@@ -1,6 +1,10 @@
+import { SettingsIcon } from "lucide-react";
+
 import { ChampionAvatar } from "@/components/icons/ChampionAvatar";
+import { Button } from "@/components/ui/button";
 import { useGameState } from "@/hooks/useGameState";
 import { cn } from "@/lib/utils";
+import { useUiStore } from "@/store/ui";
 import type { ConnectionStatus } from "@/types";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -36,6 +40,7 @@ export function Header({ status }: { status: ConnectionStatus }) {
   const { data: game } = useGameState();
   const champion = game?.selfChampion ?? null;
   const inGame = status === "in-game";
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   return (
     <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
@@ -66,6 +71,15 @@ export function Header({ status }: { status: ConnectionStatus }) {
           />
           {STATUS_LABEL[status]}
         </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label="Open settings"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <SettingsIcon className="size-4" aria-hidden="true" />
+        </Button>
       </div>
     </header>
   );
