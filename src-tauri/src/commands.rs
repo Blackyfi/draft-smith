@@ -5,16 +5,13 @@ use crate::ddragon::{
     self, cache::DdragonCache, fetch::DdragonFetcher, icons::IconKind, LoadOutcome, ResolvedData,
 };
 use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus};
-use crate::state::DdragonState;
+use crate::state::{DdragonState, LiveState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
-/// Returns the current connection / coaching status.
-///
-/// M0 stub: always [`ConnectionStatus::NoGame`]. The Live Client poller (M2) will drive this
-/// from real game state.
+/// Returns the current connection / coaching status, as maintained by the Live Client poller (M2).
 #[tauri::command]
-pub fn get_status() -> ConnectionStatus {
-    ConnectionStatus::NoGame
+pub fn get_status(state: State<'_, LiveState>) -> ConnectionStatus {
+    *state.status.lock().unwrap()
 }
 
 /// Re-runs the DDragon bootstrap, forcing a re-download even if the cached patch looks current.

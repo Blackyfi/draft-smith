@@ -1,6 +1,8 @@
 mod commands;
 mod ddragon;
+mod live_client;
 mod model;
+mod poll;
 mod state;
 mod tray;
 
@@ -28,6 +30,12 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 commands::refresh_ddragon(&handle, false).await;
             });
+
+            // Live Client poller (M2): drives `connection-status` / `game-state-changed` from the
+            // local game. Runs off the main thread for the life of the app; "no game" outside a
+            // match is the normal state, not an error (PROJECT_SPEC §3.1).
+            app.manage(state::LiveState::default());
+            poll::spawn(app.handle().clone());
 
             Ok(())
         })
