@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/hooks/useSettings";
 import { api } from "@/lib/tauri";
 import { useUiStore } from "@/store/ui";
+import type { KeyLayout } from "@/types";
 
 /** Curated DDragon locale list (spec: locale drives the re-download). */
 const LOCALES: { value: string; label: string }[] = [
@@ -211,6 +212,61 @@ export function SettingsDialog() {
               Rules only uses the data-driven rule engine (Tier A).
               Stats-biased will blend win-rate data in a future update (Tier B /
               M7).
+            </p>
+          </div>
+
+          {/* Ability keys */}
+          <div className="grid gap-1.5">
+            <Label htmlFor="ability-layout-select">Ability key layout</Label>
+            <Select
+              value={settings.abilityKeys.layout}
+              onValueChange={(v) =>
+                update({
+                  abilityKeys: { ...settings.abilityKeys, layout: v as KeyLayout },
+                })
+              }
+            >
+              <SelectTrigger id="ability-layout-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="qwerty">QWERTY (Q / W / E / R)</SelectItem>
+                <SelectItem value="azerty">AZERTY (A / Z / E / R)</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+            {settings.abilityKeys.layout === "custom" && (
+              <div className="mt-1 grid grid-cols-4 gap-2">
+                {(["Q", "W", "E", "R"] as const).map((slot, i) => (
+                  <div key={slot} className="grid gap-1">
+                    <label
+                      htmlFor={`custom-key-${slot}`}
+                      className="text-[11px] text-muted-foreground text-center"
+                    >
+                      {slot} slot
+                    </label>
+                    <input
+                      id={`custom-key-${slot}`}
+                      type="text"
+                      maxLength={1}
+                      value={settings.abilityKeys.custom[i]}
+                      onChange={(e) => {
+                        const next: [string, string, string, string] = [
+                          ...settings.abilityKeys.custom,
+                        ] as [string, string, string, string];
+                        next[i] = e.target.value.slice(-1).toUpperCase();
+                        update({ abilityKeys: { ...settings.abilityKeys, custom: next } });
+                      }}
+                      aria-label={`Custom key for slot ${slot}`}
+                      className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-center text-sm font-bold uppercase shadow-xs outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              How ability slots are labeled in the skill-order coach. Custom
+              lets you enter the exact keys you have bound in-game.
             </p>
           </div>
 

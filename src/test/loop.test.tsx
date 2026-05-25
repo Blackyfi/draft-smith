@@ -136,6 +136,14 @@ describe("FE↔Rust live loop", () => {
     tauri.invokeHandlers["get_ddragon_version"] = () => "16.10.1";
     tauri.invokeHandlers["get_champion_display_name"] = (args) =>
       (args as { name: string }).name;
+    tauri.invokeHandlers["get_settings"] = () => ({
+      pollIntervalSecs: 3,
+      theme: "dark",
+      alwaysOnTop: false,
+      locale: "en_US",
+      aggressiveness: "rules-only",
+      abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+    });
   });
 
   it("renders the build, threats, and swaps from the seeded recommendation", async () => {

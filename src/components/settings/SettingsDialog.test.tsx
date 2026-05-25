@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: Settings = {
   alwaysOnTop: false,
   locale: "en_US",
   aggressiveness: "rules-only",
+  abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
 };
 
 // ---------- Helpers ----------

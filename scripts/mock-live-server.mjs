@@ -39,7 +39,73 @@ const state = structuredClone(baseData);
 const baseGameTime = state.gameData.gameTime;
 const startedAt = Date.now();
 
-/** Appends an item to an enemy (by champion name) unless they already own it. */
+// ---------- Skill-order progression --------------------------------------------------
+// Reset activePlayer to level 1 / no ability points spent so the SkillStrip demo starts
+// from the very beginning and visibly advances through levels. The fixture has the abilities
+// object; we keep the displayNames from it and zero out the levels.
+const fixtureAbilities = baseData.activePlayer.abilities;
+state.activePlayer.level = 1;
+state.activePlayer.abilities = {
+  Passive: { ...fixtureAbilities.Passive },
+  Q: { ...fixtureAbilities.Q, abilityLevel: 0 },
+  W: { ...fixtureAbilities.W, abilityLevel: 0 },
+  E: { ...fixtureAbilities.E, abilityLevel: 0 },
+  R: { ...fixtureAbilities.R, abilityLevel: 0 },
+};
+
+/**
+ * Scripted level-up sequence for a standard Q>W>E>R>Q>Q skill order.
+ * Each entry is [level, slot] — when the player reaches `level`, put a point in `slot`.
+ * R is taken at 6, 11, 16 (the three ult ranks); Q is maxed first, then W, then E.
+ *
+ *  Level | Slot
+ *  ------|-----
+ *    1   | Q
+ *    2   | W
+ *    3   | E
+ *    4   | Q
+ *    5   | Q
+ *    6   | R
+ *    7   | Q
+ *    8   | W
+ *    9   | Q  (Q max — 5 ranks)
+ *   10   | W
+ *   11   | R
+ *   12   | W
+ *   13   | W  (W max — 5 ranks)
+ *   14   | E
+ *   15   | E
+ *   16   | R
+ *   17   | E
+ *   18   | E  (E max — 5 ranks)
+ */
+const LEVEL_SKILL_ORDER = [
+  [1, "Q"], [2, "W"], [3, "E"], [4, "Q"], [5, "Q"],
+  [6, "R"], [7, "Q"], [8, "W"], [9, "Q"], [10, "W"],
+  [11, "R"], [12, "W"], [13, "W"], [14, "E"], [15, "E"],
+  [16, "R"], [17, "E"], [18, "E"],
+];
+
+/** Level up the activePlayer by one and assign the scripted ability point. */
+function levelUp() {
+  const newLevel = state.activePlayer.level + 1;
+  if (newLevel > 18) return;
+  state.activePlayer.level = newLevel;
+  const entry = LEVEL_SKILL_ORDER.find(([lvl]) => lvl === newLevel);
+  if (entry) {
+    const slot = entry[1];
+    state.activePlayer.abilities[slot].abilityLevel += 1;
+    console.log(
+      `  Ahri leveled to ${newLevel} — +1 in ${slot} ` +
+        `(now rank ${state.activePlayer.abilities[slot].abilityLevel})`,
+    );
+  }
+}
+
+// Level up every STEP_INTERVAL_MS (same cadence as purchases) to keep the demo snappy.
+// We interleave the level-up loop with the purchase timeline so both progress together.
+
+// ---------- Appends an item to an enemy (by champion name) unless they already own it. ----
 function buy(championName, itemID, displayName) {
   const player = state.allPlayers.find((p) => p.championName === championName);
   if (!player) return;
@@ -61,9 +127,15 @@ const TIMELINE = [
 
 let step = 0;
 const timer = setInterval(() => {
+  // Always try to level up on each tick (levels 2–18 progress over 17 ticks).
+  levelUp();
+
   if (step >= TIMELINE.length) {
-    clearInterval(timer);
-    console.log("Timeline complete — holding final state (clock still ticking).");
+    // No more purchases; keep the timer alive so levels continue ticking.
+    if (state.activePlayer.level >= 18) {
+      clearInterval(timer);
+      console.log("Timeline complete — holding final state (clock still ticking).");
+    }
     return;
   }
   console.log(`\nStep ${step + 1}/${TIMELINE.length}:`);

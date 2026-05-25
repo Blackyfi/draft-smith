@@ -34,6 +34,37 @@ pub enum Aggressiveness {
     StatsBiased,
 }
 
+/// Keyboard layout for displaying ability keys in the skill-order coach. The Live Client never
+/// exposes a player's custom binds, so this is a pure display choice (slot → letter).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KeyLayout {
+    /// Q W E R (default).
+    Qwerty,
+    /// A Z E R (AZERTY ability row).
+    Azerty,
+    /// User-defined letters from `AbilityKeys::custom`.
+    Custom,
+}
+
+/// How ability slots (Q/W/E/R) are labeled in the UI.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AbilityKeys {
+    pub layout: KeyLayout,
+    /// Display letters for slots `[Q, W, E, R]`, used only when `layout == Custom`.
+    pub custom: [String; 4],
+}
+
+impl Default for AbilityKeys {
+    fn default() -> Self {
+        Self {
+            layout: KeyLayout::Qwerty,
+            custom: ["Q".into(), "W".into(), "E".into(), "R".into()],
+        }
+    }
+}
+
 /// User settings. Persisted to `app_data_dir/settings.json`; defaults are used when the file is
 /// absent or unreadable so the app always has a valid configuration (never panics on bad data).
 ///
@@ -49,6 +80,9 @@ pub struct Settings {
     /// Data Dragon text locale (e.g. "en_US", "fr_FR"). Changing it triggers a re-download.
     pub locale: String,
     pub aggressiveness: Aggressiveness,
+    /// How ability keys are displayed in the skill-order coach (display-only).
+    #[serde(default)]
+    pub ability_keys: AbilityKeys,
 }
 
 impl Default for Settings {
@@ -59,6 +93,7 @@ impl Default for Settings {
             always_on_top: false,
             locale: DEFAULT_LOCALE.to_string(),
             aggressiveness: Aggressiveness::RulesOnly,
+            ability_keys: AbilityKeys::default(),
         }
     }
 }
@@ -74,6 +109,17 @@ impl Settings {
             .clamp(MIN_POLL_INTERVAL_SECS, MAX_POLL_INTERVAL_SECS);
         if out.locale.trim().is_empty() {
             out.locale = DEFAULT_LOCALE.to_string();
+        }
+        // Custom ability-key letters: trim, uppercase, and fall back to the default Q/W/E/R letter
+        // for any blank slot, so a hand-edited settings file can't blank the badges.
+        const DEFAULTS: [&str; 4] = ["Q", "W", "E", "R"];
+        for (slot, letter) in out.ability_keys.custom.iter_mut().enumerate() {
+            let trimmed = letter.trim().to_uppercase();
+            *letter = if trimmed.is_empty() {
+                DEFAULTS[slot].to_string()
+            } else {
+                trimmed
+            };
         }
         out
     }

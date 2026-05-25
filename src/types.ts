@@ -170,6 +170,23 @@ export type Theme = "dark" | "light";
 export type Aggressiveness = "rules-only" | "stats-biased";
 
 /**
+ * Mirrors `KeyLayout` in `src-tauri/src/model/settings.rs` (serde `kebab-case`).
+ * Display-only: maps ability slots (Q/W/E/R) to the keys the player actually presses.
+ * `qwerty` → Q W E R, `azerty` → A Z E R, `custom` → `AbilityKeys.custom`.
+ */
+export type KeyLayout = "qwerty" | "azerty" | "custom";
+
+/**
+ * Mirrors `AbilityKeys` in `src-tauri/src/model/settings.rs` (serde `camelCase`).
+ * How ability slots are labeled in the skill-order coach.
+ */
+export interface AbilityKeys {
+  layout: KeyLayout;
+  /** Custom display letters for slots [Q, W, E, R]; used only when `layout === "custom"`. */
+  custom: [string, string, string, string];
+}
+
+/**
  * Mirrors `Settings` in `src-tauri/src/model/settings.rs` (serde `camelCase`).
  * Body of `get_settings` and the argument to `set_settings` (PROJECT_SPEC §4.2, §6.6). The Rust
  * side is the source of truth: it sanitizes (clamps `pollIntervalSecs` to 2–5) and returns the
@@ -184,6 +201,8 @@ export interface Settings {
   /** Data Dragon text locale (e.g. "en_US"); changing it triggers a re-download. */
   locale: string;
   aggressiveness: Aggressiveness;
+  /** How ability keys are labeled in the skill-order coach (display-only). */
+  abilityKeys: AbilityKeys;
 }
 
 /**
