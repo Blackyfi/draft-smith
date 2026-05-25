@@ -56,6 +56,7 @@ pub fn run() {
             commands::get_champion_meta,
             commands::get_item_icon,
             commands::get_champion_icon,
+            commands::get_champion_icon_by_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

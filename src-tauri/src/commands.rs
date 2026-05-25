@@ -70,6 +70,23 @@ pub async fn get_champion_icon(
     .await
 }
 
+/// Resolves a champion icon by display name (e.g. "Ahri", "Wukong"). The frontend only has names
+/// — the live payload and engine `Recommendation` carry champion names, not keys — so this is the
+/// lookup the header and enemy threat board actually use. Returns `Ok(None)` if DDragon data has
+/// not loaded or the name is unknown.
+#[tauri::command]
+pub async fn get_champion_icon_by_name(
+    name: String,
+    state: State<'_, DdragonState>,
+) -> Result<Option<String>, String> {
+    resolve_icon(&state, IconKind::Champion, |data| {
+        data.champions
+            .by_name(&name)
+            .map(|champ| champ.image.clone())
+    })
+    .await
+}
+
 /// Shared body for the icon commands: pick the icon filename + patch from loaded state (releasing
 /// the read lock before any network I/O), then resolve it to a cached path.
 async fn resolve_icon(

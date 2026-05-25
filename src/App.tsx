@@ -1,52 +1,52 @@
+import { Dashboard } from "@/components/Dashboard";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { Connecting } from "@/components/states/Connecting";
+import { ErrorState } from "@/components/states/ErrorState";
 import { NoGame } from "@/components/states/NoGame";
+import { useBuildShiftToasts } from "@/hooks/useBuildShiftToasts";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
-import type { ConnectionStatus } from "@/types";
-import { cn } from "@/lib/utils";
-
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  "no-game": "No game",
-  connecting: "Connecting…",
-  "in-game": "In game",
-  error: "Error",
-};
-
-/** Status dot color. Always paired with the text label, so color is never the only signal. */
-const STATUS_DOT: Record<ConnectionStatus, string> = {
-  "no-game": "bg-muted-foreground/40",
-  connecting: "bg-sky-500",
-  "in-game": "bg-emerald-500",
-  error: "bg-destructive",
-};
+import { useRecommendation } from "@/hooks/useRecommendation";
+import type { ConnectionStatus, Recommendation } from "@/types";
 
 function App() {
   const { data: status, isLoading } = useConnectionStatus();
-  // While the first status resolves, present it as "Connecting…" (a real, labeled state)
-  // rather than an ambiguous placeholder.
-  const current: ConnectionStatus = isLoading ? "connecting" : (status ?? "no-game");
+  const { data: recommendation } = useRecommendation();
+  // Toast build shifts as the engine re-ranks (mounted once, app-wide).
+  useBuildShiftToasts();
+
+  // While the first status resolves, present it as "Connecting…" (a real, labeled state) rather
+  // than an ambiguous placeholder.
+  const current: ConnectionStatus = isLoading
+    ? "connecting"
+    : (status ?? "no-game");
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <span className="text-sm font-semibold tracking-tight">DraftSmith</span>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className={cn("size-2 rounded-full", STATUS_DOT[current])}
-            aria-hidden="true"
-          />
-          {STATUS_LABEL[current]}
-        </span>
-      </header>
-
-      <main className="min-h-0 flex-1">
-        {/* M0 wires only the no-game state; loading / in-game / error states arrive in M4–M5. */}
-        <NoGame />
+      <Header status={current} />
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        {renderMain(current, recommendation)}
       </main>
-
-      <footer className="border-t px-4 py-2 text-[11px] text-muted-foreground">
-        data: Live Client + Data Dragon
-      </footer>
+      <Footer />
     </div>
   );
+}
+
+/** Maps the connection status to the appropriate state view (PROJECT_SPEC §6.4). */
+function renderMain(
+  status: ConnectionStatus,
+  recommendation: Recommendation | null | undefined,
+) {
+  switch (status) {
+    case "in-game":
+      return <Dashboard recommendation={recommendation} />;
+    case "connecting":
+      return <Connecting />;
+    case "error":
+      return <ErrorState />;
+    case "no-game":
+      return <NoGame />;
+  }
 }
 
 export default App;
