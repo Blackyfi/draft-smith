@@ -225,6 +225,17 @@ export interface Settings {
 }
 
 /**
+ * Mirrors `UpdateInfo` in `src-tauri/src/commands.rs` (serde `camelCase`).
+ * Returned by `check_for_update`; `null` from that command means "up to date".
+ */
+export interface UpdateInfo {
+  /** The version offered by the release endpoint (e.g. "0.1.4"). */
+  version: string;
+  /** The version currently installed (e.g. "0.1.3"). */
+  currentVersion: string;
+}
+
+/**
  * Mirrors `ChampionMeta` in `src-tauri/src/model/champion.rs` (serde `camelCase`).
  * Returned by the `get_champion_meta` command.
  */

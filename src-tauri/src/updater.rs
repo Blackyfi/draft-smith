@@ -5,9 +5,32 @@
 //! asks before installing, consistent with the app's "recommend, never act" stance (§1.2).
 //! This module is only compiled on desktop (see the `cfg` gate in `lib.rs`).
 
+use crate::commands::UpdateInfo;
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
+
+/// Checks the release endpoint and returns the available update (if any) for the frontend's
+/// in-app update card. Pure query — downloads nothing.
+pub async fn check_update<R: Runtime>(
+    app: &AppHandle<R>,
+) -> tauri_plugin_updater::Result<Option<UpdateInfo>> {
+    let current_version = app.package_info().version.to_string();
+    Ok(app.updater()?.check().await?.map(|update| UpdateInfo {
+        version: update.version.clone(),
+        current_version,
+    }))
+}
+
+/// Downloads + installs the available update and relaunches. No-op if already up to date.
+pub async fn install_update<R: Runtime>(app: &AppHandle<R>) -> tauri_plugin_updater::Result<()> {
+    if let Some(update) = app.updater()?.check().await? {
+        log::info!("installing update {} from in-app prompt", update.version);
+        update.download_and_install(|_, _| {}, || {}).await?;
+        app.restart();
+    }
+    Ok(())
+}
 
 /// Kicks off an update check on a background task (the tray menu handler must not block).
 ///
