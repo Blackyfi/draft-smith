@@ -1,8 +1,10 @@
 mod commands;
 mod ddragon;
+mod engine;
 mod live_client;
 mod model;
 mod poll;
+mod rules;
 mod state;
 mod tray;
 
@@ -49,6 +51,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_status,
+            commands::get_current_recommendation,
             commands::force_refresh_ddragon,
             commands::get_champion_meta,
             commands::get_item_icon,

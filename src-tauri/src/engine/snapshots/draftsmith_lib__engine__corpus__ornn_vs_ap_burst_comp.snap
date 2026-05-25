@@ -1,0 +1,66 @@
+---
+source: src/engine/corpus.rs
+assertion_line: 111
+expression: rec
+---
+selfChampion: Ornn
+buildPath:
+  - itemId: 3068
+    name: Sunfire Aegis
+    cost: 2700
+    owned: true
+    reason: Core on Ornn — your reliable power-spike anchor.
+  - itemId: 3111
+    name: "Mercury's Treads"
+    cost: 1200
+    owned: false
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+  - itemId: 4401
+    name: Force of Nature
+    cost: 2900
+    owned: false
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+  - itemId: 3065
+    name: Spirit Visage
+    cost: 2900
+    owned: false
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+  - itemId: 3001
+    name: Abyssal Mask
+    cost: 2700
+    owned: false
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+  - itemId: 6665
+    name: "Jak'Sho, The Protean"
+    cost: 3200
+    owned: false
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+swaps:
+  - trigger: If magic damage piles up
+    itemId: 2055
+    name: Kaenic Rookern
+    reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
+threats:
+  - champion: Syndra
+    archetype: burst-mage
+    signals:
+      - fed
+      - hard-cc
+  - champion: Brand
+    archetype: battlemage
+    signals:
+      - hard-cc
+  - champion: Annie
+    archetype: burst-mage
+    signals:
+      - hard-cc
+  - champion: Veigar
+    archetype: burst-mage
+    signals:
+      - fed
+      - hard-cc
+  - champion: Ahri
+    archetype: burst-mage
+    signals:
+      - fed
+      - mobility

@@ -8,9 +8,11 @@
 //! the recommendation: the roster, each player's level, and their owned items. Gold and the clock
 //! are excluded by construction. M3/M4 hang the actual recompute off this same change signal.
 
+use crate::engine::{self, EngineInput};
 use crate::live_client::model::AllGameData;
 use crate::live_client::LiveClient;
-use crate::model::{ConnectionStatus, GameStateSummary};
+use crate::model::{ConnectionStatus, GameStateSummary, Recommendation};
+use crate::rules::RuleSet;
 use crate::state::LiveState;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
@@ -74,6 +76,8 @@ enum PollEvent {
     ConnectionStatus(ConnectionStatus),
     /// `game-state-changed` — emitted when the diff signature changes.
     GameStateChanged(GameStateSummary),
+    /// `recommendation-updated` — emitted alongside a state change once the engine recomputes.
+    RecommendationUpdated(Recommendation),
 }
 
 /// Spawns the poll loop on the async runtime. Returns immediately; the loop runs for the life of
@@ -92,17 +96,34 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
     tauri::async_runtime::spawn(run_loop(app, client, DEFAULT_POLL_INTERVAL));
 }
 
+/// Loads the embedded engine rule set once for the poller. A parse failure (only possible from a
+/// bad edit to the bundled JSON) disables recommendations but never stops polling — the connection
+/// and game-state surface keep working.
+fn load_rules() -> Option<RuleSet> {
+    match RuleSet::load() {
+        Ok(rules) => Some(rules),
+        Err(err) => {
+            log::error!("engine rule set failed to load; recommendations disabled: {err}");
+            None
+        }
+    }
+}
+
 /// The poll loop: probe, react, sleep, forever. The per-iteration work lives in [`poll_once`],
 /// which is decoupled from Tauri (operates on `&LiveState` + an emit sink) so it can be driven in
 /// tests against a mock server without the infinite loop or a Tauri runtime.
 async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient, interval: Duration) {
     let state = app.state::<LiveState>();
+    let rules = load_rules();
     let mut emit = |event: PollEvent| match event {
         PollEvent::ConnectionStatus(status) => {
             let _ = app.emit("connection-status", status);
         }
         PollEvent::GameStateChanged(summary) => {
             let _ = app.emit("game-state-changed", &summary);
+        }
+        PollEvent::RecommendationUpdated(rec) => {
+            let _ = app.emit("recommendation-updated", &rec);
         }
     };
 
@@ -111,7 +132,14 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient, interval: D
     let mut last_signature: Option<StateSignature> = None;
 
     loop {
-        poll_once(&client, &state, &mut last_signature, &mut emit).await;
+        poll_once(
+            &client,
+            &state,
+            rules.as_ref(),
+            &mut last_signature,
+            &mut emit,
+        )
+        .await;
         tokio::time::sleep(interval).await;
     }
 }
@@ -124,6 +152,7 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient, interval: D
 async fn poll_once(
     client: &LiveClient,
     state: &LiveState,
+    rules: Option<&RuleSet>,
     last_signature: &mut Option<StateSignature>,
     // `+ Send`: the loop future is spawned on the async runtime, which requires `Send`, and this
     // reference is held across the `.await` below.
@@ -134,18 +163,27 @@ async fn poll_once(
             transition(state, ConnectionStatus::InGame, emit);
             let signature = StateSignature::from_data(&data);
             let changed = last_signature.as_ref() != Some(&signature);
-            let summary = summarize(&data);
-            *state.snapshot.write().await = Some(data);
             if changed {
                 *last_signature = Some(signature);
-                emit(PollEvent::GameStateChanged(summary));
+                emit(PollEvent::GameStateChanged(summarize(&data)));
+                // Recompute only on a meaningful change (PROJECT_SPEC §5.2 step 7). Skipped if the
+                // rule set failed to load or the local player isn't identifiable yet.
+                if let Some(rec) = rules
+                    .and_then(|rules| EngineInput::from_all_game_data(&data).map(|i| (rules, i)))
+                    .map(|(rules, input)| engine::recommend(&input, rules))
+                {
+                    *state.recommendation.write().await = Some(rec.clone());
+                    emit(PollEvent::RecommendationUpdated(rec));
+                }
             }
+            *state.snapshot.write().await = Some(data);
         }
         Err(err) if err.is_no_game() => {
             transition(state, ConnectionStatus::NoGame, emit);
-            // Leaving a game invalidates the last snapshot/signature.
+            // Leaving a game invalidates the last snapshot/signature/recommendation.
             *last_signature = None;
             *state.snapshot.write().await = None;
+            *state.recommendation.write().await = None;
         }
         Err(err) => {
             log::warn!("Live Client poll failed: {err}");
@@ -267,9 +305,13 @@ mod tests {
         let state = LiveState::default();
         let client = LiveClient::with_base(server.uri()).unwrap();
 
+        let rules = RuleSet::load().unwrap();
         let mut sig = None;
         let mut events = Vec::new();
-        poll_once(&client, &state, &mut sig, &mut |e| events.push(e)).await;
+        poll_once(&client, &state, Some(&rules), &mut sig, &mut |e| {
+            events.push(e)
+        })
+        .await;
 
         assert_eq!(*state.status.lock().unwrap(), ConnectionStatus::InGame);
         assert!(
@@ -287,18 +329,31 @@ mod tests {
         assert!(events
             .iter()
             .any(|e| matches!(e, PollEvent::GameStateChanged(_))));
+        // ...and the engine recomputed: an event fired and the recommendation is cached for the
+        // `get_current_recommendation` command (the Ahri fixture is fully authored).
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, PollEvent::RecommendationUpdated(_))));
+        let rec = state.recommendation.read().await;
+        assert_eq!(rec.as_ref().map(|r| r.self_champion.as_str()), Some("Ahri"));
     }
 
     #[tokio::test]
     async fn poll_once_no_game_clears_a_stale_snapshot() {
         let state = LiveState::default();
-        // Pretend a game had been running: seed a snapshot + signature.
+        // Pretend a game had been running: seed a snapshot + signature + recommendation.
         *state.snapshot.write().await = Some(parse(FIXTURE));
+        *state.recommendation.write().await = Some(Recommendation {
+            self_champion: "Ahri".into(),
+            build_path: Vec::new(),
+            swaps: Vec::new(),
+            threats: Vec::new(),
+        });
         let mut sig = Some(StateSignature::from_data(&parse(FIXTURE)));
 
         // Nothing listening → connection refused → the benign "no game" path.
         let client = LiveClient::with_base("http://127.0.0.1:1").unwrap();
-        poll_once(&client, &state, &mut sig, &mut |_| {}).await;
+        poll_once(&client, &state, None, &mut sig, &mut |_| {}).await;
 
         assert_eq!(*state.status.lock().unwrap(), ConnectionStatus::NoGame);
         assert!(
@@ -306,6 +361,10 @@ mod tests {
             "snapshot cleared when the game ends"
         );
         assert!(sig.is_none(), "signature reset when the game ends");
+        assert!(
+            state.recommendation.read().await.is_none(),
+            "recommendation cleared when the game ends"
+        );
     }
 
     #[tokio::test]
@@ -321,11 +380,12 @@ mod tests {
             let mut count = |e: PollEvent| match e {
                 PollEvent::ConnectionStatus(_) => status_emits += 1,
                 PollEvent::GameStateChanged(_) => summary_emits += 1,
+                PollEvent::RecommendationUpdated(_) => {}
             };
             // Two identical in-game polls: status transitions once (NoGame→InGame), and the diff
             // signature is unchanged on the second poll, so the summary fires only once.
-            poll_once(&client, &state, &mut sig, &mut count).await;
-            poll_once(&client, &state, &mut sig, &mut count).await;
+            poll_once(&client, &state, None, &mut sig, &mut count).await;
+            poll_once(&client, &state, None, &mut sig, &mut count).await;
         }
 
         assert_eq!(

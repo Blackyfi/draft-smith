@@ -50,6 +50,86 @@ export interface ItemMeta {
 }
 
 /**
+ * Mirrors `Archetype` in `src-tauri/src/model/engine.rs` (serde `kebab-case`).
+ * Abstract role the engine reasons over — never a champion name.
+ */
+export type Archetype =
+  | "assassin"
+  | "marksman"
+  | "burst-mage"
+  | "battlemage"
+  | "artillery"
+  | "bruiser"
+  | "juggernaut"
+  | "tank"
+  | "enchanter"
+  | "catcher";
+
+/**
+ * Mirrors `LiveSignal` in `src-tauri/src/model/engine.rs` (serde `kebab-case`).
+ * A live, item-/state-derived signal about an enemy. Pair color with this text + an icon in the UI
+ * (frontend.md: color is never the only signal).
+ */
+export type LiveSignal =
+  | "health-stacking"
+  | "armor-stacking"
+  | "mr-stacking"
+  | "lethality"
+  | "has-sustain"
+  | "hard-cc"
+  | "mobility"
+  | "fed";
+
+/**
+ * Mirrors `BuildStep` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * One item in the ordered path; the first non-`owned` step is the next purchase.
+ */
+export interface BuildStep {
+  itemId: number;
+  name: string;
+  /** Total gold cost. */
+  cost: number;
+  /** Already purchased — render checked/dimmed. */
+  owned: boolean;
+  /** Generated, threat-specific rationale. */
+  reason: string;
+}
+
+/**
+ * Mirrors `SwapSuggestion` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * A situational "if X then buy Y" alternative.
+ */
+export interface SwapSuggestion {
+  /** What would make this swap worth it (e.g. "If their healing grows"). */
+  trigger: string;
+  itemId: number;
+  name: string;
+  reason: string;
+}
+
+/**
+ * Mirrors `EnemyThreatView` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * One enemy row for the threat board.
+ */
+export interface EnemyThreatView {
+  champion: string;
+  archetype: Archetype;
+  signals: LiveSignal[];
+}
+
+/**
+ * Mirrors `Recommendation` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * Body of the `recommendation-updated` event and the `get_current_recommendation` command.
+ */
+export interface Recommendation {
+  selfChampion: string;
+  /** Ordered I1→I6 path. */
+  buildPath: BuildStep[];
+  swaps: SwapSuggestion[];
+  threats: EnemyThreatView[];
+}
+
+/**
  * Mirrors `ChampionMeta` in `src-tauri/src/model/champion.rs` (serde `camelCase`).
  * Returned by the `get_champion_meta` command.
  */

@@ -1,0 +1,60 @@
+{
+  "_comment": "Item knowledge for the engine (PROJECT_SPEC §5.2). intentTags drive what a build picks; grantsSignals is what owning this item tells us about an *enemy*. Adding/retuning an item is an edit here — never in engine/. Costs/names are authored fallbacks; DDragon supplies icons + cross-checks at runtime.",
+  "items": {
+    "1001": { "name": "Boots", "totalCost": 300, "isBoots": true, "intentTags": ["move_speed"] },
+    "3006": { "name": "Berserker's Greaves", "totalCost": 1100, "isBoots": true, "intentTags": ["on_hit", "crit"] },
+    "3020": { "name": "Sorcerer's Shoes", "totalCost": 1100, "isBoots": true, "intentTags": ["magic_pen_flat"] },
+    "3047": { "name": "Plated Steelcaps", "totalCost": 1200, "isBoots": true, "intentTags": ["armor_self"], "grantsSignals": ["armor-stacking"] },
+    "3111": { "name": "Mercury's Treads", "totalCost": 1200, "isBoots": true, "intentTags": ["mr_self"], "grantsSignals": ["mr-stacking"] },
+    "3158": { "name": "Ionian Boots of Lucidity", "totalCost": 950, "isBoots": true, "intentTags": ["ability_haste"] },
+
+    "6655": { "name": "Luden's Companion", "totalCost": 2900, "damageType": "magic", "intentTags": ["burst_amp", "ability_haste"] },
+    "4645": { "name": "Shadowflame", "totalCost": 3000, "damageType": "magic", "intentTags": ["burst_amp", "magic_pen_flat"] },
+    "3157": { "name": "Zhonya's Hourglass", "totalCost": 3250, "damageType": "magic", "intentTags": ["stasis_survival", "armor_self", "burst_amp"] },
+    "3102": { "name": "Banshee's Veil", "totalCost": 3100, "damageType": "magic", "intentTags": ["spellshield", "mr_self"] },
+    "3135": { "name": "Void Staff", "totalCost": 2800, "damageType": "magic", "intentTags": ["magic_pen_percent"] },
+    "3137": { "name": "Cryptbloom", "totalCost": 2850, "damageType": "magic", "intentTags": ["magic_pen_percent", "antiheal"] },
+    "3089": { "name": "Rabadon's Deathcap", "totalCost": 3600, "damageType": "magic", "intentTags": ["burst_amp"] },
+    "3165": { "name": "Morellonomicon", "totalCost": 2200, "damageType": "magic", "intentTags": ["antiheal", "burst_amp"] },
+    "6653": { "name": "Liandry's Torment", "totalCost": 3000, "damageType": "magic", "intentTags": ["percent_hp_damage", "burst_amp"] },
+
+    "6672": { "name": "Kraken Slayer", "totalCost": 3100, "damageType": "physical", "intentTags": ["on_hit", "percent_hp_damage"] },
+    "3031": { "name": "Infinity Edge", "totalCost": 3450, "damageType": "physical", "intentTags": ["crit"] },
+    "6694": { "name": "Serylda's Grudge", "totalCost": 3000, "damageType": "physical", "intentTags": ["armor_pen_percent"] },
+    "3036": { "name": "Lord Dominik's Regards", "totalCost": 3000, "damageType": "physical", "intentTags": ["armor_pen_percent", "percent_hp_damage"] },
+    "3033": { "name": "Mortal Reminder", "totalCost": 3000, "damageType": "physical", "intentTags": ["antiheal", "armor_pen_percent"] },
+    "3072": { "name": "Bloodthirster", "totalCost": 3400, "damageType": "physical", "intentTags": ["lifesteal", "spellshield"], "grantsSignals": ["has-sustain"] },
+    "3026": { "name": "Guardian Angel", "totalCost": 3200, "damageType": "physical", "intentTags": ["stasis_survival"] },
+    "3046": { "name": "Phantom Dancer", "totalCost": 2650, "damageType": "physical", "intentTags": ["crit", "move_speed"] },
+    "3156": { "name": "Maw of Malmortius", "totalCost": 3100, "damageType": "physical", "intentTags": ["spellshield", "mr_self"] },
+    "3153": { "name": "Blade of the Ruined King", "totalCost": 3200, "damageType": "physical", "intentTags": ["on_hit", "percent_hp_damage", "lifesteal"] },
+
+    "6610": { "name": "Sundered Sky", "totalCost": 3100, "damageType": "physical", "intentTags": ["sustain"], "grantsSignals": ["has-sustain"] },
+    "6630": { "name": "Goredrinker", "totalCost": 3300, "damageType": "physical", "intentTags": ["omnivamp", "sustain"], "grantsSignals": ["has-sustain"] },
+    "3071": { "name": "Black Cleaver", "totalCost": 3000, "damageType": "physical", "intentTags": ["armor_pen_percent", "health_self"] },
+    "3053": { "name": "Sterak's Gage", "totalCost": 3200, "damageType": "physical", "intentTags": ["health_self"], "grantsSignals": ["health-stacking"] },
+    "6333": { "name": "Death's Dance", "totalCost": 3300, "damageType": "physical", "intentTags": ["sustain", "armor_self"], "grantsSignals": ["has-sustain"] },
+    "3065": { "name": "Spirit Visage", "totalCost": 2900, "intentTags": ["mr_self", "sustain", "health_self"], "grantsSignals": ["mr-stacking", "has-sustain"] },
+    "3075": { "name": "Thornmail", "totalCost": 2700, "intentTags": ["armor_self", "antiheal"], "grantsSignals": ["armor-stacking"] },
+    "6631": { "name": "Stridebreaker", "totalCost": 3300, "damageType": "physical", "intentTags": ["move_speed", "sustain"] },
+
+    "3068": { "name": "Sunfire Aegis", "totalCost": 2700, "intentTags": ["armor_self", "health_self"], "grantsSignals": ["health-stacking", "armor-stacking"] },
+    "3084": { "name": "Heartsteel", "totalCost": 3200, "intentTags": ["health_self"], "grantsSignals": ["health-stacking"] },
+    "4401": { "name": "Force of Nature", "totalCost": 2900, "intentTags": ["mr_self", "move_speed"], "grantsSignals": ["mr-stacking"] },
+    "3110": { "name": "Frozen Heart", "totalCost": 2500, "intentTags": ["armor_self", "ability_haste"], "grantsSignals": ["armor-stacking"] },
+    "3001": { "name": "Abyssal Mask", "totalCost": 2700, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking", "health-stacking"] },
+    "3143": { "name": "Randuin's Omen", "totalCost": 2700, "intentTags": ["armor_self", "health_self"], "grantsSignals": ["armor-stacking", "health-stacking"] },
+    "6665": { "name": "Jak'Sho, The Protean", "totalCost": 3200, "intentTags": ["armor_self", "mr_self"], "grantsSignals": ["armor-stacking", "mr-stacking"] },
+    "2055": { "name": "Kaenic Rookern", "totalCost": 2900, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking"] },
+
+    "6692": { "name": "Eclipse", "totalCost": 2900, "damageType": "physical", "intentTags": ["lethality"], "grantsSignals": ["lethality"] },
+    "3142": { "name": "Youmuu's Ghostblade", "totalCost": 2700, "damageType": "physical", "intentTags": ["lethality", "move_speed"], "grantsSignals": ["lethality"] },
+    "3814": { "name": "Edge of Night", "totalCost": 2900, "damageType": "physical", "intentTags": ["lethality", "spellshield"], "grantsSignals": ["lethality"] },
+    "3124": { "name": "Guinsoo's Rageblade", "totalCost": 3000, "damageType": "mixed", "intentTags": ["on_hit"] },
+    "3115": { "name": "Nashor's Tooth", "totalCost": 3000, "damageType": "magic", "intentTags": ["on_hit"] },
+
+    "3865": { "name": "World Atlas", "totalCost": 400, "intentTags": [] },
+    "3869": { "name": "Celestial Opposition", "totalCost": 400, "intentTags": [] },
+    "2003": { "name": "Health Potion", "totalCost": 50, "intentTags": [] }
+  }
+}
