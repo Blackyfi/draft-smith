@@ -1,6 +1,6 @@
 [package]
 name = "draftsmith"
-version = "0.1.1"
+version = "0.1.2"
 description = "DraftSmith — live, matchup-aware item recommendations for League of Legends"
 authors = ["DraftSmith"]
 license = ""
