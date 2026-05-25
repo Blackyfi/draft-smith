@@ -1,8 +1,10 @@
 mod commands;
+mod ddragon;
 mod model;
+mod state;
 mod tray;
 
-use tauri::WindowEvent;
+use tauri::{Manager, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +18,17 @@ pub fn run() {
                 )?;
             }
             tray::build_tray(app.handle())?;
+
+            // DDragon cache lives in the app-data dir (outside the repo). Resolve it, register
+            // the managed state, and kick off the bootstrap off the main thread so startup is
+            // never blocked on the network (PROJECT_SPEC §3.2; falls back to cache when offline).
+            let cache_root = app.path().app_data_dir()?.join("ddragon");
+            app.manage(state::DdragonState::new(cache_root));
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                commands::refresh_ddragon(&handle, false).await;
+            });
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -26,7 +39,13 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![commands::get_status])
+        .invoke_handler(tauri::generate_handler![
+            commands::get_status,
+            commands::force_refresh_ddragon,
+            commands::get_champion_meta,
+            commands::get_item_icon,
+            commands::get_champion_icon,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
