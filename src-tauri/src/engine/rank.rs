@@ -9,6 +9,7 @@ use crate::engine::aggregate::{active_conditions, ActiveCondition};
 use crate::engine::classify::classify_enemy;
 use crate::engine::explain;
 use crate::engine::input::EngineInput;
+use crate::engine::skill::recommend_skill;
 use crate::model::{BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, ThreatProfile};
 use crate::rules::{CounterRule, RuleSet};
 
@@ -50,6 +51,12 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
     let demands = build_demands(&profiles, rules);
     let threats = profiles.iter().map(threat_view).collect();
 
+    // Skill-order advice is independent of the build graph (an enemy-less champ still levels up),
+    // so compute it once up front and attach it to whichever recommendation we return.
+    let skill = rules
+        .skill_plan(&input.self_champion)
+        .and_then(|plan| recommend_skill(input.self_level, &input.self_abilities, plan));
+
     let Some(graph) = rules
         .champion(&input.self_champion)
         .and_then(|c| c.build_graph.as_ref())
@@ -59,6 +66,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats,
+            skill,
         };
     };
 
@@ -115,6 +123,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         build_path,
         swaps,
         threats,
+        skill,
     }
 }
 

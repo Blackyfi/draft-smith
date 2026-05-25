@@ -34,6 +34,35 @@ pub struct ActivePlayer {
     /// downstream (PROJECT_SPEC §6.4). Deliberately excluded from the poll diff signature since
     /// it ticks up passively every second (see `poll`).
     pub current_gold: f64,
+    /// Current ability ranks + names, used by the skill-order coach. Absent on some partial
+    /// payloads (defaults to all-zero ranks), so never assume it's populated.
+    pub abilities: Abilities,
+}
+
+/// The active player's four abilities, keyed by their fixed **slots** (`Q`/`W`/`E`/`R` = 1st/2nd/
+/// 3rd/ultimate). These are slot identifiers, not the player's keybinds — the displayed key is a
+/// frontend setting (PROJECT_SPEC: advisory; the Live Client never exposes custom binds).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct Abilities {
+    #[serde(rename = "Q")]
+    pub q: Ability,
+    #[serde(rename = "W")]
+    pub w: Ability,
+    #[serde(rename = "E")]
+    pub e: Ability,
+    #[serde(rename = "R")]
+    pub r: Ability,
+}
+
+/// One ability slot: its current rank (0–5; ultimate 0–3) and human display name.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Ability {
+    /// Current rank (points invested). 0 = not yet leveled.
+    pub ability_level: u32,
+    /// Display name (e.g. "Orb of Deception"); locale-dependent, straight from the Live Client.
+    pub display_name: String,
 }
 
 /// One player row from `allPlayers`.

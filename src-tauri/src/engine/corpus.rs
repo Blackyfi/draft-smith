@@ -63,6 +63,10 @@ fn jinx_vs_tank_frontline() {
         ],
         game_time: 1500.0,
         gold: 1300.0,
+        // Synthetic fixture has no live ability data → skill advice is `None` here; the
+        // skill-order logic is covered by `engine::skill` unit tests + the Ahri snapshot.
+        self_level: 0,
+        self_abilities: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Jinx");
@@ -84,6 +88,8 @@ fn sett_vs_heavy_healing_comp() {
         ],
         game_time: 1700.0,
         gold: 1400.0,
+        self_level: 0,
+        self_abilities: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Sett");
@@ -105,6 +111,8 @@ fn ornn_vs_ap_burst_comp() {
         ],
         game_time: 1600.0,
         gold: 1500.0,
+        self_level: 0,
+        self_abilities: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Ornn");

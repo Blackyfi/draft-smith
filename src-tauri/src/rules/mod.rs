@@ -9,13 +9,14 @@
 //! The default rule set is embedded at compile time (`include_str!`) so the engine stays I/O-free
 //! and snapshot tests run offline. A bad edit fails the build / a single test, not the running app.
 
-use crate::model::engine::{Archetype, DamageType, IntentTag, LiveSignal};
+use crate::model::engine::{AbilitySlot, Archetype, DamageType, IntentTag, LiveSignal};
 use serde::Deserialize;
 use std::collections::HashMap;
 
 const CHAMPION_PROFILES_JSON: &str = include_str!("data/champion_profiles.json");
 const ITEM_INTENTS_JSON: &str = include_str!("data/item_intents.json");
 const COUNTERS_JSON: &str = include_str!("data/counters.json");
+const SKILL_ORDERS_JSON: &str = include_str!("data/skill_orders.json");
 
 /// A condition the enemy team can exhibit that pulls the build toward certain intent-tags. The
 /// engine derives the *active* set from a [`crate::model::TeamThreat`]; this enum is the join key
@@ -91,9 +92,24 @@ pub struct CounterRule {
     pub reason: String,
 }
 
+/// A champion's skill-order plan: the priority for *maxing* the basic abilities (PROJECT_SPEC
+/// §1.3). Universal rules (unlock each ability early, ultimate at 6/11/16) live in the engine, not
+/// here — only the per-champion maxing priority is data.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillPlan {
+    /// Basic abilities in maxing priority, highest first (e.g. `[Q, W, E]`).
+    pub max_order: Vec<AbilitySlot>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ChampionFile {
     champions: HashMap<String, ChampionProfile>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SkillFile {
+    champions: HashMap<String, SkillPlan>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,6 +128,7 @@ pub struct RuleSet {
     champions: HashMap<String, ChampionProfile>,
     items: HashMap<u32, ItemIntent>,
     counters: Vec<CounterRule>,
+    skill_orders: HashMap<String, SkillPlan>,
 }
 
 impl RuleSet {
@@ -121,10 +138,12 @@ impl RuleSet {
         let champions: ChampionFile = serde_json::from_str(CHAMPION_PROFILES_JSON)?;
         let items: ItemFile = serde_json::from_str(ITEM_INTENTS_JSON)?;
         let counters: CounterFile = serde_json::from_str(COUNTERS_JSON)?;
+        let skills: SkillFile = serde_json::from_str(SKILL_ORDERS_JSON)?;
         Ok(Self {
             champions: champions.champions,
             items: items.items,
             counters: counters.counters,
+            skill_orders: skills.champions,
         })
     }
 
@@ -141,6 +160,11 @@ impl RuleSet {
     /// The counter rule for a condition, if one is authored.
     pub fn counter(&self, condition: CounterCondition) -> Option<&CounterRule> {
         self.counters.iter().find(|c| c.condition == condition)
+    }
+
+    /// The skill-order plan for a champion by Live Client `championName`, if authored.
+    pub fn skill_plan(&self, name: &str) -> Option<&SkillPlan> {
+        self.skill_orders.get(name)
     }
 }
 

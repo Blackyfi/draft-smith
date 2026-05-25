@@ -1,6 +1,6 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 69
+assertion_line: 73
 expression: rec
 ---
 selfChampion: Jinx
@@ -75,3 +75,4 @@ threats:
       - health-stacking
       - hard-cc
       - mobility
+skill: ~

@@ -118,6 +118,31 @@ export interface EnemyThreatView {
 }
 
 /**
+ * Mirrors `AbilitySlot` in `src-tauri/src/model/engine.rs` (serde `UPPERCASE`).
+ * The four ability *slots* — not the player's keybinds. The displayed key is a settings choice
+ * (`abilityKeys`), so map this slot → letter on the frontend.
+ */
+export type AbilitySlot = "Q" | "W" | "E" | "R";
+
+/**
+ * Mirrors `SkillAdvice` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * The next ability to rank up (skill-order coach); `null` on `Recommendation.skill` when there's
+ * no live ability data or no authored skill plan for the champion.
+ */
+export interface SkillAdvice {
+  /** Which slot to put the next point in. */
+  slot: AbilitySlot;
+  /** Ability display name from the Live Client (e.g. "Spirit Rush"); may be empty. */
+  abilityName: string;
+  /** True when a point is unspent right now → emphasize "level up now"; false = look-ahead. */
+  pointAvailable: boolean;
+  /** Champion level this pick is for. */
+  atLevel: number;
+  /** Generated rationale (e.g. "Max Q first", "Take your ultimate"). */
+  reason: string;
+}
+
+/**
  * Mirrors `Recommendation` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
  * Body of the `recommendation-updated` event and the `get_current_recommendation` command.
  */
@@ -127,6 +152,8 @@ export interface Recommendation {
   buildPath: BuildStep[];
   swaps: SwapSuggestion[];
   threats: EnemyThreatView[];
+  /** Which ability to level next, or null when unavailable / champion not authored. */
+  skill: SkillAdvice | null;
 }
 
 /**

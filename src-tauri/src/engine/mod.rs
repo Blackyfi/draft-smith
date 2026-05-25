@@ -17,6 +17,7 @@ pub mod classify;
 pub mod explain;
 pub mod input;
 pub mod rank;
+pub mod skill;
 
 #[cfg(test)]
 mod corpus;

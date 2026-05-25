@@ -28,6 +28,9 @@ pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(3);
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct StateSignature {
     players: Vec<PlayerSignature>,
+    /// Active player's ability ranks (Q, W, E, R). Player level already lives in `players`, but
+    /// *spending* a skill point changes only this — track it so the skill-order advice re-computes.
+    abilities: (u32, u32, u32, u32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,7 +59,20 @@ impl StateSignature {
                 }
             })
             .collect();
-        Self { players }
+        let abilities = data
+            .active_player
+            .as_ref()
+            .map(|a| {
+                let ab = &a.abilities;
+                (
+                    ab.q.ability_level,
+                    ab.w.ability_level,
+                    ab.e.ability_level,
+                    ab.r.ability_level,
+                )
+            })
+            .unwrap_or_default();
+        Self { players, abilities }
     }
 }
 
@@ -368,6 +384,7 @@ mod tests {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats: Vec::new(),
+            skill: None,
         });
         let mut sig = Some(StateSignature::from_data(&parse(FIXTURE)));
 

@@ -166,4 +166,36 @@ pub struct Recommendation {
     pub build_path: Vec<BuildStep>,
     pub swaps: Vec<SwapSuggestion>,
     pub threats: Vec<EnemyThreatView>,
+    /// Which ability to level next (skill-order coach), or `None` when DDragon/live data is
+    /// insufficient or the champion has no authored skill plan.
+    pub skill: Option<SkillAdvice>,
+}
+
+/// One of the four ability slots, in canonical Live Client order: Q/W/E = basic abilities,
+/// R = ultimate. These are *slots*, not keybinds — the displayed key is a frontend setting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum AbilitySlot {
+    Q,
+    W,
+    E,
+    R,
+}
+
+/// Skill-order advice for the active player: the next ability to rank up (PROJECT_SPEC §1.3 —
+/// data-driven, advisory only). Mirrors `SkillAdvice` in `src/types.ts`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillAdvice {
+    /// The slot to put the next point in.
+    pub slot: AbilitySlot,
+    /// That ability's display name from the Live Client (e.g. "Spirit Rush"); empty if unknown.
+    pub ability_name: String,
+    /// True when a point is unspent *right now* (champion level > points spent) — the cue to
+    /// emphasize "level up now"; false means this is the look-ahead for the next level.
+    pub point_available: bool,
+    /// The champion level this pick is for (current level if a point is waiting, else the next).
+    pub at_level: u32,
+    /// Generated rationale (e.g. "Take your ultimate", "Max Q first", "Unlock W").
+    pub reason: String,
 }
