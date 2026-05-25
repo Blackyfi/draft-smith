@@ -82,6 +82,9 @@ describe("SettingsDialog", () => {
     };
     tauri.invokeHandlers["force_refresh_ddragon"] = () => "ready";
     tauri.invokeHandlers["reset_ddragon_cache"] = () => "ready";
+    tauri.invokeHandlers["get_app_version"] = () => "0.1.3";
+    tauri.invokeHandlers["check_for_update"] = () => null;
+    tauri.invokeHandlers["get_changelog"] = () => "## 0.1.3\n- test";
   });
 
   it("renders all controls seeded from get_settings", async () => {
@@ -178,9 +181,7 @@ describe("SettingsDialog", () => {
     });
     await user.click(refreshBtn);
 
-    expect(
-      await screen.findByText("Patch data refreshed"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Patch data refreshed")).toBeInTheDocument();
   });
 
   it("shows a success toast after reset cache", async () => {

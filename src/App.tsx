@@ -10,6 +10,7 @@ import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useRecommendation } from "@/hooks/useRecommendation";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 import { useThemeSync } from "@/hooks/useThemeSync";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useUiStore } from "@/store/ui";
 import type { ConnectionStatus, Recommendation } from "@/types";
 
@@ -18,6 +19,9 @@ function App() {
   const { data: recommendation } = useRecommendation();
   // Toast build shifts as the engine re-ranks (mounted once, app-wide).
   useBuildShiftToasts();
+  // Seed the update-check query once at app start so the Header badge and the
+  // About section in SettingsDialog share the same cached result.
+  useUpdateCheck();
   // Apply the theme from settings to document.documentElement.
   useThemeSync();
   // Open the settings dialog when the tray "Settings" entry fires.
