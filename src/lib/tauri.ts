@@ -5,6 +5,7 @@ import type {
   ConnectionStatus,
   DdragonStatus,
   Recommendation,
+  Settings,
 } from "@/types";
 
 /**
@@ -26,6 +27,22 @@ export const api = {
 
   /** Re-runs the DDragon bootstrap (force re-download); resolves to the terminal status. */
   forceRefreshDdragon: () => invoke<DdragonStatus>("force_refresh_ddragon"),
+
+  /** Wipes the on-disk DDragon cache, then re-bootstraps from the CDN; resolves to the status. */
+  resetDdragonCache: () => invoke<DdragonStatus>("reset_ddragon_cache"),
+
+  /** The cached DDragon patch version (e.g. "14.10.1"), or `null` before data has loaded. */
+  getDdragonVersion: () => invoke<string | null>("get_ddragon_version"),
+
+  /** Current user settings (sanitized by Rust). */
+  getSettings: () => invoke<Settings>("get_settings"),
+
+  /**
+   * Persists settings and applies side effects (always-on-top, locale re-download). Returns the
+   * sanitized settings Rust actually stored — adopt this value rather than the input.
+   */
+  setSettings: (settings: Settings) =>
+    invoke<Settings>("set_settings", { settings }),
 
   /** Resolved champion metadata by numeric key (Live Client ID space), or `null` if unknown. */
   getChampionMeta: (key: number) =>

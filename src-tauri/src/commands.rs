@@ -4,8 +4,9 @@
 use crate::ddragon::{
     self, cache::DdragonCache, fetch::DdragonFetcher, icons::IconKind, LoadOutcome, ResolvedData,
 };
-use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus, Recommendation};
-use crate::state::{DdragonState, LiveState};
+use crate::model::settings::DEFAULT_LOCALE;
+use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus, Recommendation, Settings};
+use crate::state::{DdragonState, LiveState, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 /// Returns the current connection / coaching status, as maintained by the Live Client poller (M2).
@@ -29,6 +30,72 @@ pub async fn get_current_recommendation(
 #[tauri::command]
 pub async fn force_refresh_ddragon(app: AppHandle) -> DdragonStatus {
     refresh_ddragon(&app, true).await
+}
+
+/// Returns the current user settings (the in-memory clone kept by [`SettingsState`]).
+#[tauri::command]
+pub fn get_settings(state: State<'_, SettingsState>) -> Settings {
+    state.current()
+}
+
+/// Persists user settings and applies their side effects. Returns the *sanitized* value actually
+/// stored, so the FE can reflect any clamping/normalization. Network side effects (a locale change
+/// re-download) are spawned, never awaited, so the command returns promptly (PROJECT_SPEC §6.6).
+#[tauri::command]
+pub async fn set_settings(
+    app: AppHandle,
+    settings: Settings,
+    settings_state: State<'_, SettingsState>,
+) -> Result<Settings, String> {
+    let next = settings.sanitized();
+    let locale_changed = next.locale != settings_state.current().locale;
+
+    settings_state.save(&next).map_err(|err| err.to_string())?;
+
+    // Pin-on-top is applied immediately to the main window.
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(next.always_on_top);
+    }
+
+    // A locale switch re-downloads the DDragon text blobs; do it off the command so we never block
+    // the FE on the network. `refresh_ddragon` reads the (already-persisted) new locale from state.
+    if locale_changed {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            refresh_ddragon(&handle, true).await;
+        });
+    }
+
+    Ok(next)
+}
+
+/// Clears the on-disk DDragon cache (best-effort) and re-runs the bootstrap, forcing a fresh
+/// download. Returns the terminal status (`ready` or `offline`).
+#[tauri::command]
+pub async fn reset_ddragon_cache(app: AppHandle) -> DdragonStatus {
+    let cache_root = app.state::<DdragonState>().cache_root.clone();
+    // Best-effort: a partly-cleared or absent cache is fine — the forced refresh repopulates it.
+    if cache_root.exists() {
+        if let Err(err) = std::fs::remove_dir_all(&cache_root) {
+            log::warn!(
+                "reset_ddragon_cache: could not clear {} ({err})",
+                cache_root.display()
+            );
+        }
+    }
+    refresh_ddragon(&app, true).await
+}
+
+/// Returns the patch version of the currently loaded DDragon data, or `None` if none is loaded yet
+/// (or the lock is momentarily held by the bootstrap). A synchronous command keeps the FE contract
+/// `Option<String>` rather than `Result<…>`; `try_read` never blocks the IPC thread.
+#[tauri::command]
+pub fn get_ddragon_version(state: State<'_, DdragonState>) -> Option<String> {
+    state
+        .data
+        .try_read()
+        .ok()
+        .and_then(|guard| guard.as_ref().map(|data| data.version.clone()))
 }
 
 /// Looks up resolved champion metadata by its numeric key (the Live Client ID space).
@@ -121,6 +188,13 @@ pub async fn refresh_ddragon<R: Runtime>(app: &AppHandle<R>, force: bool) -> Ddr
     let state = app.state::<DdragonState>();
     let cache = DdragonCache::new(state.cache_root.clone());
 
+    // The locale comes from settings when they're managed (always, in production), else the default.
+    // Keeping a fallback lets the startup bootstrap run before/without managed settings in tests.
+    let locale = app
+        .try_state::<SettingsState>()
+        .map(|s| s.current().locale)
+        .unwrap_or_else(|| DEFAULT_LOCALE.to_string());
+
     let _ = app.emit("ddragon-status", DdragonStatus::Checking);
 
     let fetcher = match DdragonFetcher::new() {
@@ -135,7 +209,7 @@ pub async fn refresh_ddragon<R: Runtime>(app: &AppHandle<R>, force: bool) -> Ddr
         let _ = app.emit("ddragon-status", DdragonStatus::Updating);
     };
 
-    match ddragon::ensure_up_to_date(&cache, &fetcher, force, on_updating).await {
+    match ddragon::ensure_up_to_date(&cache, &fetcher, force, &locale, on_updating).await {
         Ok((data, outcome)) => {
             log::info!(
                 "DDragon {} (patch {}, {} items, {} champions)",

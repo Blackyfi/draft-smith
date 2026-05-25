@@ -17,6 +17,8 @@ export interface TauriEvents {
   "game-state-changed": GameStateSummary;
   "recommendation-updated": Recommendation;
   "ddragon-status": DdragonStatus;
+  /** Emitted by the tray "Settings" menu item; the FE opens the Settings dialog. No payload. */
+  "open-settings": null;
 }
 
 /**

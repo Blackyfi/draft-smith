@@ -130,6 +130,36 @@ export interface Recommendation {
 }
 
 /**
+ * Mirrors `Theme` in `src-tauri/src/model/settings.rs` (serde `kebab-case`).
+ * Applied on the frontend as an `<html>` class; dark-first per PROJECT_SPEC §6.1.
+ */
+export type Theme = "dark" | "light";
+
+/**
+ * Mirrors `Aggressiveness` in `src-tauri/src/model/settings.rs` (serde `kebab-case`).
+ * `rules-only` is the only v1 behavior (Tier A); `stats-biased` is the Tier B prior reserved for
+ * M7 — persisted but inert, and surfaced as disabled in the UI until then (PROJECT_SPEC §5.3).
+ */
+export type Aggressiveness = "rules-only" | "stats-biased";
+
+/**
+ * Mirrors `Settings` in `src-tauri/src/model/settings.rs` (serde `camelCase`).
+ * Body of `get_settings` and the argument to `set_settings` (PROJECT_SPEC §4.2, §6.6). The Rust
+ * side is the source of truth: it sanitizes (clamps `pollIntervalSecs` to 2–5) and returns the
+ * normalized settings, so the FE should adopt the value `set_settings` returns.
+ */
+export interface Settings {
+  /** Live Client poll cadence in seconds; Rust clamps to 2–5. */
+  pollIntervalSecs: number;
+  theme: Theme;
+  /** Whether the main window stays above other windows. */
+  alwaysOnTop: boolean;
+  /** Data Dragon text locale (e.g. "en_US"); changing it triggers a re-download. */
+  locale: string;
+  aggressiveness: Aggressiveness;
+}
+
+/**
  * Mirrors `ChampionMeta` in `src-tauri/src/model/champion.rs` (serde `camelCase`).
  * Returned by the `get_champion_meta` command.
  */

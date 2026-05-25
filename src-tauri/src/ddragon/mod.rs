@@ -65,12 +65,13 @@ pub async fn refresh(
     cache: &DdragonCache,
     fetcher: &DdragonFetcher,
     version: &str,
+    locale: &str,
 ) -> Result<ResolvedData> {
     let item_bytes = fetcher
-        .get_bytes(&format!("/cdn/{version}/data/en_US/item.json"))
+        .get_bytes(&format!("/cdn/{version}/data/{locale}/item.json"))
         .await?;
     let champion_bytes = fetcher
-        .get_bytes(&format!("/cdn/{version}/data/en_US/champion.json"))
+        .get_bytes(&format!("/cdn/{version}/data/{locale}/champion.json"))
         .await?;
 
     // Parse before persisting so a corrupt download can't replace good cached data.
@@ -79,6 +80,9 @@ pub async fn refresh(
 
     cache.write_item_json(&item_bytes)?;
     cache.write_champion_json(&champion_bytes)?;
+    // The locale marker is written before the version marker: `version` is the "data is complete"
+    // sentinel, so it stays last (after everything it describes, locale included).
+    cache.write_locale(locale)?;
     cache.write_version(version)?;
 
     Ok(ResolvedData {
@@ -95,21 +99,29 @@ pub async fn refresh(
 /// - Offline + cache present: serve stale cache → [`LoadOutcome::Offline`].
 /// - Offline + no cache: [`DdragonError::NoCache`] (degraded; caller surfaces an offline status).
 ///
+/// A change to `locale` is treated like a needed refresh: even on the same patch, switching locale
+/// must re-download the text blobs (so it is correct across restarts, not just within one run).
+///
 /// `on_updating` is invoked exactly once, right before a download begins, so callers can surface
 /// an "updating" status. It is not called on the cache-hit or offline paths.
 pub async fn ensure_up_to_date(
     cache: &DdragonCache,
     fetcher: &DdragonFetcher,
     force: bool,
+    locale: &str,
     on_updating: impl FnOnce(),
 ) -> Result<(ResolvedData, LoadOutcome)> {
     match version::fetch_latest_version(fetcher).await {
         Ok(latest) => {
             let cached = cache.cached_version();
-            if force || !cache.has_core_data() || version::needs_refresh(&latest, cached.as_deref())
+            let locale_changed = cache.cached_locale().as_deref() != Some(locale);
+            if force
+                || !cache.has_core_data()
+                || locale_changed
+                || version::needs_refresh(&latest, cached.as_deref())
             {
                 on_updating();
-                let data = refresh(cache, fetcher, &latest).await?;
+                let data = refresh(cache, fetcher, &latest, locale).await?;
                 Ok((data, LoadOutcome::Updated))
             } else {
                 Ok((load_from_cache(cache)?, LoadOutcome::UpToDate))
@@ -155,6 +167,59 @@ mod tests {
         assert_eq!(data.champions.by_key(103).unwrap().name, "Ahri");
     }
 
+    /// A cache that already holds the same patch but a *different* locale must be re-downloaded,
+    /// not served from disk — even though `needs_refresh` (patch-only) would say it's current.
+    /// Driven against a local mock CDN so it needs no network.
+    #[tokio::test]
+    async fn locale_marker_mismatch_forces_refresh() {
+        use crate::ddragon::fetch::DdragonFetcher;
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/versions.json"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(br#"["14.10.1"]"#, "application/json"),
+            )
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/cdn/14.10.1/data/fr_FR/item.json"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(ITEM_JSON, "application/json"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/cdn/14.10.1/data/fr_FR/champion.json"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(CHAMPION_JSON, "application/json"),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let cache = DdragonCache::new(dir.path());
+        // Prime the cache as if a previous run had fetched the same patch in en_US.
+        prime_cache(&cache, "14.10.1");
+        cache.write_locale("en_US").unwrap();
+
+        let fetcher = DdragonFetcher::with_base(server.uri()).unwrap();
+        let mut updating_called = false;
+        let (data, outcome) =
+            ensure_up_to_date(&cache, &fetcher, false, "fr_FR", || updating_called = true)
+                .await
+                .unwrap();
+
+        assert_eq!(
+            outcome,
+            LoadOutcome::Updated,
+            "a locale switch on the same patch must force a re-download"
+        );
+        assert!(updating_called, "on_updating fires before the download");
+        assert_eq!(data.version, "14.10.1");
+        assert_eq!(cache.cached_locale().as_deref(), Some("fr_FR"));
+    }
+
     #[test]
     fn load_from_cache_errors_when_empty() {
         let dir = tempdir().unwrap();
@@ -179,7 +244,7 @@ mod tests {
         let fetcher = DdragonFetcher::new().unwrap();
 
         // First run: online, fresh patch -> download + cache.
-        let (data, outcome) = ensure_up_to_date(&cache, &fetcher, false, || {})
+        let (data, outcome) = ensure_up_to_date(&cache, &fetcher, false, "en_US", || {})
             .await
             .expect("live fetch should succeed");
         assert_eq!(outcome, LoadOutcome::Updated);
@@ -189,8 +254,8 @@ mod tests {
         assert_eq!(data.items[&1001].name, "Boots");
         assert_eq!(data.champions.by_key(103).unwrap().name, "Ahri");
 
-        // Second run: cache is current -> served from disk, no re-download.
-        let (_, outcome) = ensure_up_to_date(&cache, &fetcher, false, || {})
+        // Second run: cache is current (same locale) -> served from disk, no re-download.
+        let (_, outcome) = ensure_up_to_date(&cache, &fetcher, false, "en_US", || {})
             .await
             .unwrap();
         assert_eq!(outcome, LoadOutcome::UpToDate);
