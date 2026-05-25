@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(cargo test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo insta:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run tauri dev:*)",
+      "Bash(npm run tauri build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "PowerShell(cargo test:*)",
+      "PowerShell(cargo clippy:*)",
+      "PowerShell(cargo fmt:*)",
+      "PowerShell(cargo insta:*)",
+      "PowerShell(npm run test:*)",
+      "PowerShell(npm run lint:*)",
+      "PowerShell(npm run tauri dev:*)",
+      "PowerShell(npm run tauri build:*)",
+      "PowerShell(git add:*)",
+      "PowerShell(git commit:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/hooks/format-after-edit.ps1"],
+            "timeout": 120,
+            "statusMessage": "Formatting + linting edited file"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/hooks/block-destructive.ps1"],
+            "timeout": 15,
+            "statusMessage": "Checking command safety"
+          }
+        ]
+      }
+    ]
+  }
+}
