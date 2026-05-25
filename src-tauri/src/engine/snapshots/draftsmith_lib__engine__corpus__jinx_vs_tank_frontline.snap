@@ -1,0 +1,77 @@
+---
+source: src/engine/corpus.rs
+assertion_line: 69
+expression: rec
+---
+selfChampion: Jinx
+buildPath:
+  - itemId: 6672
+    name: Kraken Slayer
+    cost: 3100
+    owned: true
+    reason: Core on Jinx — your reliable power-spike anchor.
+  - itemId: 3111
+    name: "Mercury's Treads"
+    cost: 1200
+    owned: false
+    reason: "Counters Ornn, Sion and 3 others (heavy crowd control) — survives their chain CC."
+  - itemId: 3036
+    name: "Lord Dominik's Regards"
+    cost: 3000
+    owned: false
+    reason: "Counters Ornn, Sion and 3 others (a health-stacked frontline) — shreds their stacked health."
+  - itemId: 6694
+    name: "Serylda's Grudge"
+    cost: 3000
+    owned: false
+    reason: Counters Ornn and Malphite (stacked armor) — ignores their armor.
+  - itemId: 3033
+    name: Mortal Reminder
+    cost: 3000
+    owned: false
+    reason: Counters Ornn and Malphite (stacked armor) — ignores their armor.
+  - itemId: 3153
+    name: Blade of the Ruined King
+    cost: 3200
+    owned: false
+    reason: "Counters Ornn, Sion and 3 others (a health-stacked frontline) — shreds their stacked health."
+swaps:
+  - trigger: If their crowd control grows
+    itemId: 3072
+    name: Bloodthirster
+    reason: "Counters Ornn, Sion and 3 others (heavy crowd control) — survives their chain CC."
+  - trigger: If their crowd control grows
+    itemId: 3156
+    name: Maw of Malmortius
+    reason: "Counters Ornn, Sion and 3 others (heavy crowd control) — survives their chain CC."
+threats:
+  - champion: Ornn
+    archetype: tank
+    signals:
+      - health-stacking
+      - armor-stacking
+      - mr-stacking
+      - hard-cc
+  - champion: Sion
+    archetype: tank
+    signals:
+      - health-stacking
+      - hard-cc
+  - champion: Malphite
+    archetype: tank
+    signals:
+      - health-stacking
+      - armor-stacking
+      - hard-cc
+  - champion: Darius
+    archetype: juggernaut
+    signals:
+      - fed
+      - health-stacking
+      - hard-cc
+  - champion: Vi
+    archetype: bruiser
+    signals:
+      - health-stacking
+      - hard-cc
+      - mobility

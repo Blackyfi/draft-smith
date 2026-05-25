@@ -1,0 +1,65 @@
+{
+  "_comment": "Champion knowledge for the engine (PROJECT_SPEC §1.3, §5.1). Keyed by the Live Client `championName`. `cc`/`mobility` are champion facts the engine can't read off items, so they live here as data. `buildGraph` is present only for champions we author as the *player*; enemies need only archetype/damageType/cc/mobility for classification. Adding a champion is an edit here — never in engine/.",
+  "champions": {
+    "Ahri": {
+      "archetype": "burst-mage",
+      "damageType": "magic",
+      "mobility": true,
+      "buildGraph": {
+        "anchors": [6655],
+        "boots": [3020, 3111],
+        "candidates": [4645, 3157, 3102, 3135, 3137, 3089, 3165, 6653]
+      }
+    },
+    "Jinx": {
+      "archetype": "marksman",
+      "damageType": "physical",
+      "buildGraph": {
+        "anchors": [6672],
+        "boots": [3006, 3111],
+        "candidates": [3031, 3036, 6694, 3033, 3072, 3026, 3046, 3156, 3153]
+      }
+    },
+    "Sett": {
+      "archetype": "juggernaut",
+      "damageType": "physical",
+      "cc": true,
+      "buildGraph": {
+        "anchors": [6610],
+        "boots": [3047, 3111],
+        "candidates": [3053, 3071, 6333, 3065, 3075, 3156, 3068, 3026]
+      }
+    },
+    "Ornn": {
+      "archetype": "tank",
+      "damageType": "magic",
+      "cc": true,
+      "buildGraph": {
+        "anchors": [3068],
+        "boots": [3047, 3111],
+        "candidates": [3075, 4401, 3065, 3110, 3001, 3143, 6665, 2055, 3084]
+      }
+    },
+
+    "Zed": { "archetype": "assassin", "damageType": "physical", "mobility": true },
+    "Darius": { "archetype": "juggernaut", "damageType": "physical", "cc": true },
+    "Vi": { "archetype": "bruiser", "damageType": "physical", "cc": true, "mobility": true },
+    "Kaisa": { "archetype": "marksman", "damageType": "mixed", "mobility": true },
+    "Leona": { "archetype": "catcher", "damageType": "magic", "cc": true },
+    "LeeSin": { "archetype": "bruiser", "damageType": "physical", "mobility": true },
+    "Thresh": { "archetype": "catcher", "damageType": "magic", "cc": true },
+
+    "Sion": { "archetype": "tank", "damageType": "physical", "cc": true },
+    "Malphite": { "archetype": "tank", "damageType": "magic", "cc": true },
+
+    "Aatrox": { "archetype": "bruiser", "damageType": "physical", "cc": true },
+    "Vladimir": { "archetype": "battlemage", "damageType": "magic" },
+    "Soraka": { "archetype": "enchanter", "damageType": "magic" },
+    "Warwick": { "archetype": "bruiser", "damageType": "mixed", "cc": true, "mobility": true },
+
+    "Syndra": { "archetype": "burst-mage", "damageType": "magic", "cc": true },
+    "Brand": { "archetype": "battlemage", "damageType": "magic", "cc": true },
+    "Annie": { "archetype": "burst-mage", "damageType": "magic", "cc": true },
+    "Veigar": { "archetype": "burst-mage", "damageType": "magic", "cc": true }
+  }
+}

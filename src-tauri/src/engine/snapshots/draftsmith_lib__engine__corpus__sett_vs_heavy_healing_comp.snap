@@ -1,0 +1,66 @@
+---
+source: src/engine/corpus.rs
+assertion_line: 90
+expression: rec
+---
+selfChampion: Sett
+buildPath:
+  - itemId: 6610
+    name: Sundered Sky
+    cost: 3100
+    owned: false
+    reason: Core on Sett — your reliable power-spike anchor.
+  - itemId: 3111
+    name: "Mercury's Treads"
+    cost: 1200
+    owned: false
+    reason: "Counters Aatrox, Warwick and Darius (heavy crowd control) — survives their chain CC."
+  - itemId: 3075
+    name: Thornmail
+    cost: 2700
+    owned: false
+    reason: "Counters Aatrox, Vladimir and 2 others (heavy healing) — cuts their healing."
+  - itemId: 3065
+    name: Spirit Visage
+    cost: 2900
+    owned: false
+    reason: "Counters Aatrox, Warwick and Darius (heavy crowd control) — survives their chain CC."
+  - itemId: 3156
+    name: Maw of Malmortius
+    cost: 3100
+    owned: false
+    reason: "Counters Aatrox, Warwick and Darius (heavy crowd control) — survives their chain CC."
+  - itemId: 3053
+    name: "Sterak's Gage"
+    cost: 3200
+    owned: false
+    reason: Rounds out the build — strong general-purpose pick for this champion.
+swaps: []
+threats:
+  - champion: Aatrox
+    archetype: bruiser
+    signals:
+      - fed
+      - has-sustain
+      - hard-cc
+  - champion: Vladimir
+    archetype: battlemage
+    signals:
+      - fed
+      - has-sustain
+      - mr-stacking
+  - champion: Soraka
+    archetype: enchanter
+    signals: []
+  - champion: Warwick
+    archetype: bruiser
+    signals:
+      - fed
+      - has-sustain
+      - hard-cc
+      - mobility
+  - champion: Darius
+    archetype: juggernaut
+    signals:
+      - has-sustain
+      - hard-cc

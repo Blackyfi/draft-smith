@@ -32,6 +32,8 @@ thiserror = "2"
 
 [dev-dependencies]
 tempfile = "3"
+# Snapshot-testing the engine's explained recommendation output (PROJECT_SPEC §5.4, M3).
+insta = { version = "1", features = ["yaml"] }
 # A throwaway local HTTP server for testing the Live Client poller against captured
 # `/allgamedata` JSON, so M2 is verifiable without launching League (PROJECT_SPEC §9, M2).
 wiremock = "0.6"

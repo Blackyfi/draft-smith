@@ -7,12 +7,16 @@
 
 pub mod champion;
 pub mod ddragon;
+pub mod engine;
 pub mod game;
 pub mod item;
 pub mod status;
 
 pub use champion::ChampionMeta;
 pub use ddragon::DdragonStatus;
+pub use engine::{
+    BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, TeamThreat, ThreatProfile,
+};
 pub use game::GameStateSummary;
 pub use item::ItemMeta;
 pub use status::ConnectionStatus;

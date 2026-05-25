@@ -65,6 +65,11 @@ pub struct Player {
 #[serde(rename_all = "camelCase", default)]
 pub struct Item {
     /// Numeric DDragon item ID — resolve to metadata via the DDragon layer.
+    ///
+    /// The Live Client sends this as `itemID` (capital `ID`), which is *not* what `camelCase`
+    /// derives (`itemId`), so it needs an explicit rename — otherwise every id silently parses to
+    /// `0`. (Surfaced by the M3 engine fixtures.)
+    #[serde(rename = "itemID")]
     pub item_id: u32,
     /// Stack count (e.g. multiple control wards / pots in one slot).
     pub count: u32,
@@ -140,6 +145,15 @@ impl Player {
             .split_once('#')
             .map(|(name, _)| name)
             .unwrap_or(&self.riot_id)
+    }
+
+    /// Whether this row refers to the same player as `other`, matched by Riot ID (preferred) then
+    /// legacy summoner name — the same identity logic [`AllGameData::self_player`] uses. Lets
+    /// consumers exclude "us" from a roster by identity rather than by fragile pointer equality.
+    pub fn is_same_player(&self, other: &Player) -> bool {
+        (!other.riot_id_game_name().is_empty()
+            && self.riot_id_game_name() == other.riot_id_game_name())
+            || (!other.summoner_name.is_empty() && self.summoner_name == other.summoner_name)
     }
 }
 

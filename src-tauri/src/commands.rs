@@ -4,7 +4,7 @@
 use crate::ddragon::{
     self, cache::DdragonCache, fetch::DdragonFetcher, icons::IconKind, LoadOutcome, ResolvedData,
 };
-use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus};
+use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus, Recommendation};
 use crate::state::{DdragonState, LiveState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
@@ -12,6 +12,16 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 #[tauri::command]
 pub fn get_status(state: State<'_, LiveState>) -> ConnectionStatus {
     *state.status.lock().unwrap()
+}
+
+/// Returns the latest engine recommendation, or `None` when there's no live game (so the FE can
+/// hydrate on mount without waiting for the next `recommendation-updated` event). The poller keeps
+/// this in sync; the engine never recomputes here (PROJECT_SPEC §4.2, §5.2).
+#[tauri::command]
+pub async fn get_current_recommendation(
+    state: State<'_, LiveState>,
+) -> Result<Option<Recommendation>, String> {
+    Ok(state.recommendation.read().await.clone())
 }
 
 /// Re-runs the DDragon bootstrap, forcing a re-download even if the cached patch looks current.

@@ -1,0 +1,65 @@
+---
+source: src/engine/corpus.rs
+assertion_line: 48
+expression: rec
+---
+selfChampion: Ahri
+buildPath:
+  - itemId: 6655
+    name: "Luden's Companion"
+    cost: 2900
+    owned: true
+    reason: Core on Ahri — your reliable power-spike anchor.
+  - itemId: 3111
+    name: "Mercury's Treads"
+    cost: 1200
+    owned: false
+    reason: "Counters Darius, Vi and Leona (heavy crowd control) — survives their chain CC."
+  - itemId: 3157
+    name: "Zhonya's Hourglass"
+    cost: 3250
+    owned: false
+    reason: Counters Zed (a fed assassin) — negates the all-in window.
+  - itemId: 3102
+    name: "Banshee's Veil"
+    cost: 3100
+    owned: false
+    reason: Counters Zed (a fed assassin) — negates the all-in window.
+  - itemId: 3137
+    name: Cryptbloom
+    cost: 2850
+    owned: false
+    reason: Counters Darius (heavy healing) — cuts their healing.
+  - itemId: 3165
+    name: Morellonomicon
+    cost: 2200
+    owned: false
+    reason: Counters Darius (heavy healing) — cuts their healing.
+swaps: []
+threats:
+  - champion: Zed
+    archetype: assassin
+    signals:
+      - fed
+      - lethality
+      - mobility
+  - champion: Darius
+    archetype: juggernaut
+    signals:
+      - fed
+      - has-sustain
+      - armor-stacking
+      - hard-cc
+  - champion: Vi
+    archetype: bruiser
+    signals:
+      - hard-cc
+      - mobility
+  - champion: Kaisa
+    archetype: marksman
+    signals:
+      - mobility
+  - champion: Leona
+    archetype: catcher
+    signals:
+      - hard-cc

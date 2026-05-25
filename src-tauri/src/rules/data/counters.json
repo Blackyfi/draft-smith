@@ -1,0 +1,15 @@
+{
+  "_comment": "Archetype/signal → counter-intent mapping (PROJECT_SPEC §5.2 step 4). When a team-threat condition is active, items carrying the `prefer` intent-tags score higher, and `reason` is the explanation fragment shown to the player. `weight` is the base pull of the condition (fed-assassin pulls hardest). Tuning counters is an edit here — never in engine/.",
+  "counters": [
+    { "when": "fed-assassin", "weight": 4.0, "prefer": ["stasis_survival", "spellshield"], "reason": "negates the all-in window" },
+    { "when": "lethality", "weight": 2.5, "prefer": ["stasis_survival", "armor_self", "spellshield"], "reason": "blunts their burst combo" },
+    { "when": "has-sustain", "weight": 3.0, "prefer": ["antiheal"], "reason": "cuts their healing" },
+    { "when": "health-stacking", "weight": 2.5, "prefer": ["percent_hp_damage"], "reason": "shreds their stacked health" },
+    { "when": "armor-stacking", "weight": 2.5, "prefer": ["armor_pen_percent"], "reason": "ignores their armor" },
+    { "when": "mr-stacking", "weight": 2.5, "prefer": ["magic_pen_percent"], "reason": "ignores their magic resist" },
+    { "when": "physical-heavy", "weight": 2.0, "prefer": ["armor_self"], "reason": "most of their damage is physical" },
+    { "when": "magic-heavy", "weight": 2.0, "prefer": ["mr_self"], "reason": "most of their damage is magic" },
+    { "when": "hard-cc", "weight": 1.5, "prefer": ["spellshield", "mr_self"], "reason": "survives their chain CC" },
+    { "when": "mobility", "weight": 1.0, "prefer": ["move_speed"], "reason": "keeps pace with their mobility" }
+  ]
+}
