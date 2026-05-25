@@ -3,6 +3,7 @@ import { SettingsIcon } from "lucide-react";
 import { ChampionAvatar } from "@/components/icons/ChampionAvatar";
 import { Button } from "@/components/ui/button";
 import { useGameState } from "@/hooks/useGameState";
+import { useChampionName } from "@/hooks/useIcon";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
 import type { ConnectionStatus } from "@/types";
@@ -39,6 +40,8 @@ function formatClock(seconds: number): string {
 export function Header({ status }: { status: ConnectionStatus }) {
   const { data: game } = useGameState();
   const champion = game?.selfChampion ?? null;
+  // Live Client id ("Kaisa") → friendly display name ("Kai'Sa").
+  const championName = useChampionName(champion);
   const inGame = status === "in-game";
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
@@ -47,9 +50,9 @@ export function Header({ status }: { status: ConnectionStatus }) {
       <div className="flex min-w-0 items-center gap-2">
         {inGame && champion ? (
           <>
-            <ChampionAvatar name={champion} className="size-8" />
+            <ChampionAvatar name={championName} className="size-8" />
             <span className="truncate text-sm font-semibold tracking-tight">
-              {champion}
+              {championName}
             </span>
           </>
         ) : (
