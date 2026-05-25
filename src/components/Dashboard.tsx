@@ -1,6 +1,7 @@
 import { Eye } from "lucide-react";
 
 import { BuildNext } from "@/components/build/BuildNext";
+import { SkillStrip } from "@/components/skill/SkillStrip";
 import { Connecting } from "@/components/states/Connecting";
 import { SwapStrip } from "@/components/swaps/SwapStrip";
 import { EnemyThreatBoard } from "@/components/threat/EnemyThreatBoard";
@@ -27,6 +28,7 @@ export function Dashboard({
 
   return (
     <div className="flex flex-col gap-5 p-3">
+      <SkillStrip />
       <BuildNext buildPath={recommendation.buildPath} />
 
       {noSignalsYet && (
