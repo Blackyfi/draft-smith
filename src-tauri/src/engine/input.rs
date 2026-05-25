@@ -19,6 +19,28 @@ pub struct EngineInput {
     pub enemies: Vec<EnemyInput>,
     pub game_time: f64,
     pub gold: f64,
+    /// The player's champion level (1–18); drives skill-order timing. 0 when not yet known.
+    pub self_level: u32,
+    /// The player's current ability ranks + names, for the skill-order coach.
+    pub self_abilities: SelfAbilities,
+}
+
+/// The active player's four ability slots (rank + display name), in canonical order.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SelfAbilities {
+    pub q: AbilityState,
+    pub w: AbilityState,
+    pub e: AbilityState,
+    pub r: AbilityState,
+}
+
+/// One ability slot's live state.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AbilityState {
+    /// Current rank (points invested): 0–5 for basics, 0–3 for the ultimate.
+    pub rank: u32,
+    /// Display name from the Live Client (e.g. "Spirit Rush"); may be empty.
+    pub name: String,
 }
 
 /// One enemy, reduced to what classification needs.
@@ -59,13 +81,32 @@ impl EngineInput {
             })
             .collect();
 
+        let active = data.active_player.as_ref();
+        let abilities = active.map(|a| &a.abilities);
+        let ability_state = |pick: fn(&crate::live_client::model::Abilities) -> &crate::live_client::model::Ability| {
+            abilities.map_or_else(AbilityState::default, |ab| {
+                let a = pick(ab);
+                AbilityState {
+                    rank: a.ability_level,
+                    name: a.display_name.clone(),
+                }
+            })
+        };
+
         Some(Self {
             self_champion: me.champion_name.clone(),
             self_items: me.items.iter().map(|i| i.item_id).collect(),
             allies,
             enemies,
             game_time: data.game_data.game_time,
-            gold: data.active_player.as_ref().map_or(0.0, |a| a.current_gold),
+            gold: active.map_or(0.0, |a| a.current_gold),
+            self_level: active.map_or(0, |a| a.level),
+            self_abilities: SelfAbilities {
+                q: ability_state(|ab| &ab.q),
+                w: ability_state(|ab| &ab.w),
+                e: ability_state(|ab| &ab.e),
+                r: ability_state(|ab| &ab.r),
+            },
         })
     }
 }

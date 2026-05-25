@@ -8,6 +8,13 @@
       "abilityPower": 80.0,
       "armor": 42.0,
       "magicResist": 32.1
+    },
+    "abilities": {
+      "Passive": { "abilityLevel": 0, "displayName": "Essence Theft" },
+      "Q": { "abilityLevel": 5, "displayName": "Orb of Deception" },
+      "W": { "abilityLevel": 2, "displayName": "Fox-Fire" },
+      "E": { "abilityLevel": 1, "displayName": "Charm" },
+      "R": { "abilityLevel": 1, "displayName": "Spirit Rush" }
     }
   },
   "allPlayers": [

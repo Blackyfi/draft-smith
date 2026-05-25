@@ -1,6 +1,6 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 90
+assertion_line: 96
 expression: rec
 ---
 selfChampion: Sett
@@ -64,3 +64,4 @@ threats:
     signals:
       - has-sustain
       - hard-cc
+skill: ~

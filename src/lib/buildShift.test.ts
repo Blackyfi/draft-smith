@@ -11,7 +11,7 @@ function rec(
   buildPath: BuildStep[],
   threats: EnemyThreatView[],
 ): Recommendation {
-  return { selfChampion: "Ahri", buildPath, swaps: [], threats };
+  return { selfChampion: "Ahri", buildPath, swaps: [], threats, skill: null };
 }
 
 const ZED_LETHAL: EnemyThreatView = {

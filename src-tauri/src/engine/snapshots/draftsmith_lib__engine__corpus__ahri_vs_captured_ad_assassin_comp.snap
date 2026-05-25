@@ -63,3 +63,9 @@ threats:
     archetype: catcher
     signals:
       - hard-cc
+skill:
+  slot: W
+  abilityName: Fox-Fire
+  pointAvailable: false
+  atLevel: 10
+  reason: Max Fox-Fire next.

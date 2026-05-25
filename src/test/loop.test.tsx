@@ -85,6 +85,7 @@ const REC_A: Recommendation = {
     { champion: "Darius", archetype: "juggernaut", signals: ["has-sustain"] },
     { champion: "Vi", archetype: "bruiser", signals: [] },
   ],
+  skill: null,
 };
 
 // Vi reveals magic-resist stacking → Void Staff is promoted to the next purchase.
