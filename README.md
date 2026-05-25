@@ -214,4 +214,6 @@ scripts/         mock-live-server.mjs (the no-League dev loop)
 
 ## License
 
-Not yet licensed. © DraftSmith.
+**All Rights Reserved** — proprietary. Copyright © 2026 Blackyfi. No use, copying,
+modification, or distribution is permitted; viewing the source grants no rights.
+See [LICENSE.md](./LICENSE.md). Not affiliated with Riot Games.
