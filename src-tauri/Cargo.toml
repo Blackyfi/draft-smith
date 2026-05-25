@@ -15,7 +15,7 @@ name = "draftsmith_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.6.2" }
+tauri-build = { version = "2.6.2", features = [] }
 
 [dependencies]
 serde_json = "1.0"
@@ -23,3 +23,12 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.2", features = ["tray-icon"] }
 tauri-plugin-log = "2"
+# DDragon HTTP client: kept separate from the M2 Live Client client. reqwest 0.13's default TLS
+# is rustls validated by the OS trust store (rustls-platform-verifier) — no system OpenSSL.
+# `json` adds typed body (de)serialization.
+reqwest = { version = "0.13", features = ["json"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs"] }
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
