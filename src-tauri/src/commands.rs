@@ -25,6 +25,68 @@ pub async fn get_current_recommendation(
     Ok(state.recommendation.read().await.clone())
 }
 
+/// The app changelog, embedded at compile time (Markdown). Surfaced in-app via Settings → What's
+/// new, so the user can read version history without leaving DraftSmith.
+const CHANGELOG_MD: &str = include_str!("../../CHANGELOG.md");
+
+/// Returns the bundled changelog (Markdown source) for the in-app "What's new" view.
+#[tauri::command]
+pub fn get_changelog() -> &'static str {
+    CHANGELOG_MD
+}
+
+/// The installed application version (from `tauri.conf.json`), e.g. "0.1.3". Shown in Settings.
+#[tauri::command]
+pub fn get_app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+/// An available update, as surfaced to the frontend by [`check_for_update`].
+/// Mirrors `UpdateInfo` in `src/types.ts`.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    /// The version offered by the release endpoint (e.g. "0.1.4").
+    pub version: String,
+    /// The version currently installed (e.g. "0.1.3").
+    pub current_version: String,
+}
+
+/// Checks the GitHub Releases endpoint for a newer version. `Ok(None)` means up to date; `Err`
+/// means the check couldn't complete (offline, no published release yet, etc.). Desktop-only — the
+/// updater plugin isn't built on mobile, where stores handle updates.
+#[tauri::command]
+pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    #[cfg(desktop)]
+    {
+        crate::updater::check_update(&app)
+            .await
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Ok(None)
+    }
+}
+
+/// Downloads + installs the available update (verified against the embedded minisign key) and
+/// relaunches. Advisory: the frontend only calls this after the user clicks "Update now".
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        crate::updater::install_update(&app)
+            .await
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Err("In-app updates are desktop-only.".into())
+    }
+}
+
 /// Re-runs the DDragon bootstrap, forcing a re-download even if the cached patch looks current.
 /// Returns the terminal status (`ready` or `offline`).
 #[tauri::command]

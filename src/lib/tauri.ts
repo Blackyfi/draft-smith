@@ -6,6 +6,7 @@ import type {
   DdragonStatus,
   Recommendation,
   Settings,
+  UpdateInfo,
 } from "@/types";
 
 /**
@@ -70,6 +71,19 @@ export const api = {
    */
   getChampionDisplayName: (name: string) =>
     invoke<string | null>("get_champion_display_name", { name }),
+
+  /** The installed app version (e.g. "0.1.3"). */
+  getAppVersion: () => invoke<string>("get_app_version"),
+
+  /** The bundled changelog (Markdown source) for the in-app "What's new" view. */
+  getChangelog: () => invoke<string>("get_changelog"),
+
+  /** Checks the release endpoint; resolves to the update or `null` when up to date. Rejects when
+   * the check can't complete (offline, no published release yet). */
+  checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
+
+  /** Downloads + installs the available update and relaunches the app. */
+  installUpdate: () => invoke<void>("install_update"),
 };
 
 /**
