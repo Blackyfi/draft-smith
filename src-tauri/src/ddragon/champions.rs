@@ -40,6 +40,10 @@ pub struct ChampionIndex {
     by_key: HashMap<u32, ChampionMeta>,
     /// Display name → numeric key, so name lookups reuse the `by_key` store.
     name_to_key: HashMap<String, u32>,
+    /// DDragon id → numeric key. The Live Client's `championName` is actually the **id**
+    /// ("Kaisa", "LeeSin", "MonkeyKing"), not the display name, so id lookup backs icon resolution
+    /// for champions whose id differs from their display name (Kai'Sa, Lee Sin, Wukong, …).
+    id_to_key: HashMap<String, u32>,
 }
 
 impl ChampionIndex {
@@ -48,12 +52,23 @@ impl ChampionIndex {
         self.by_key.get(&key)
     }
 
-    /// Looks up a champion by its display name (e.g. "Ahri", "Wukong"). Used where only a name is
-    /// available — champion icons on the FE.
+    /// Looks up a champion by its display name (e.g. "Ahri", "Wukong").
     pub fn by_name(&self, name: &str) -> Option<&ChampionMeta> {
         self.name_to_key
             .get(name)
             .and_then(|key| self.by_key.get(key))
+    }
+
+    /// Looks up a champion by its DDragon id (e.g. "Ahri", "MonkeyKing", "Kaisa").
+    pub fn by_id(&self, id: &str) -> Option<&ChampionMeta> {
+        self.id_to_key.get(id).and_then(|key| self.by_key.get(key))
+    }
+
+    /// Resolves a champion from whatever string the live payload / engine carries. That value is
+    /// the DDragon **id** in practice, but we try the display name first so a genuine display name
+    /// (e.g. from a hand-written fixture) still resolves. Used by the champion-icon command.
+    pub fn by_name_or_id(&self, name_or_id: &str) -> Option<&ChampionMeta> {
+        self.by_name(name_or_id).or_else(|| self.by_id(name_or_id))
     }
 
     /// Number of resolved champions.
@@ -70,6 +85,7 @@ pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
     let file: ChampionFile = serde_json::from_slice(bytes)?;
     let mut by_key = HashMap::with_capacity(file.data.len());
     let mut name_to_key = HashMap::with_capacity(file.data.len());
+    let mut id_to_key = HashMap::with_capacity(file.data.len());
     for (data_key, value) in file.data {
         let raw: RawChampion = match serde_json::from_value(value) {
             Ok(raw) => raw,
@@ -86,6 +102,7 @@ pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
             continue;
         };
         name_to_key.insert(raw.name.clone(), key);
+        id_to_key.insert(raw.id.clone(), key);
         by_key.insert(
             key,
             ChampionMeta {
@@ -100,6 +117,7 @@ pub fn parse_champions(bytes: &[u8]) -> Result<ChampionIndex> {
     Ok(ChampionIndex {
         by_key,
         name_to_key,
+        id_to_key,
     })
 }
 
@@ -120,6 +138,11 @@ mod tests {
                 "id": "MonkeyKing", "key": "62", "name": "Wukong",
                 "tags": ["Fighter", "Tank"],
                 "image": { "full": "MonkeyKing.png" }
+            },
+            "Kaisa": {
+                "id": "Kaisa", "key": "145", "name": "Kai'Sa",
+                "tags": ["Marksman"],
+                "image": { "full": "Kaisa.png" }
             }
         }
     }"#;
@@ -127,7 +150,7 @@ mod tests {
     #[test]
     fn indexes_by_numeric_key() {
         let index = parse_champions(SAMPLE).unwrap();
-        assert_eq!(index.count(), 2);
+        assert_eq!(index.count(), 3);
         let ahri = index.by_key(103).unwrap();
         assert_eq!(ahri.name, "Ahri");
         assert_eq!(ahri.image, "Ahri.png");
@@ -146,6 +169,26 @@ mod tests {
         assert_eq!(index.by_name("Wukong").unwrap().image, "MonkeyKing.png");
         assert!(index.by_name("MonkeyKing").is_none());
         assert!(index.by_name("Nobody").is_none());
+    }
+
+    #[test]
+    fn looks_up_by_id_for_icon_resolution() {
+        let index = parse_champions(SAMPLE).unwrap();
+        // The Live Client's `championName` is the DDragon id, not the display name.
+        assert_eq!(index.by_id("MonkeyKing").unwrap().image, "MonkeyKing.png");
+        assert_eq!(index.by_id("Kaisa").unwrap().image, "Kaisa.png");
+        assert!(index.by_id("Wukong").is_none());
+    }
+
+    #[test]
+    fn by_name_or_id_resolves_either_form() {
+        let index = parse_champions(SAMPLE).unwrap();
+        // The bug fix: "Kaisa" (id from the live payload) must resolve even though the display
+        // name is "Kai'Sa". Both the id and a genuine display name resolve to the same icon.
+        assert_eq!(index.by_name_or_id("Kaisa").unwrap().image, "Kaisa.png");
+        assert_eq!(index.by_name_or_id("Kai'Sa").unwrap().image, "Kaisa.png");
+        assert_eq!(index.by_name_or_id("Ahri").unwrap().image, "Ahri.png");
+        assert!(index.by_name_or_id("Nobody").is_none());
     }
 
     #[test]

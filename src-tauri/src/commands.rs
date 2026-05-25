@@ -137,10 +137,10 @@ pub async fn get_champion_icon(
     .await
 }
 
-/// Resolves a champion icon by display name (e.g. "Ahri", "Wukong"). The frontend only has names
-/// — the live payload and engine `Recommendation` carry champion names, not keys — so this is the
-/// lookup the header and enemy threat board actually use. Returns `Ok(None)` if DDragon data has
-/// not loaded or the name is unknown.
+/// Resolves a champion icon by the string the FE has — which is the Live Client's `championName`,
+/// i.e. the DDragon **id** ("Ahri", "Kaisa", "MonkeyKing"), though a real display name resolves
+/// too (see [`ChampionIndex::by_name_or_id`]). This is the lookup the header and enemy threat
+/// board use. Returns `Ok(None)` if DDragon data has not loaded or the champion is unknown.
 #[tauri::command]
 pub async fn get_champion_icon_by_name(
     name: String,
@@ -148,7 +148,7 @@ pub async fn get_champion_icon_by_name(
 ) -> Result<Option<String>, String> {
     resolve_icon(&state, IconKind::Champion, |data| {
         data.champions
-            .by_name(&name)
+            .by_name_or_id(&name)
             .map(|champ| champ.image.clone())
     })
     .await
