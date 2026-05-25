@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { CloudOff } from "lucide-react";
 
 import { useDdragonStatus } from "@/hooks/useDdragonStatus";
+import { useDdragonVersion } from "@/hooks/useDdragonVersion";
 import { useLastUpdated } from "@/hooks/useLastUpdated";
-import { api } from "@/lib/tauri";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 
 /** Formats a Date into a relative "Ns ago" / "Nm ago" string. */
@@ -25,12 +24,7 @@ export function Footer() {
   const offline = ddragon === "offline";
   const inGame = status === "in-game";
   const lastUpdated = useLastUpdated();
-
-  const { data: version } = useQuery({
-    queryKey: ["ddragon-version"],
-    queryFn: api.getDdragonVersion,
-    staleTime: Infinity,
-  });
+  const { data: version } = useDdragonVersion();
 
   return (
     <footer className="flex items-center justify-between gap-2 border-t px-3 py-2 text-[11px] text-muted-foreground">
