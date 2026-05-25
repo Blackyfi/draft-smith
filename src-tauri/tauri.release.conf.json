@@ -1,6 +1,5 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "_comment": "Release-only overlay applied in CI via `tauri build --config` (see .github/workflows/release.yml). It adds Windows Authenticode signing on top of tauri.conf.json. It lives OUT of the base config so local `npm run tauri build` works without signtool (the Windows SDK), which only the CI runners have. The thumbprint must match the cert imported from the WINDOWS_CERTIFICATE secret.",
   "bundle": {
     "windows": {
       "certificateThumbprint": "E8FFA873FF5502C2BDA2C50B77619161FF965215",
