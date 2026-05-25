@@ -85,6 +85,7 @@ const REC_A: Recommendation = {
     { champion: "Darius", archetype: "juggernaut", signals: ["has-sustain"] },
     { champion: "Vi", archetype: "bruiser", signals: [] },
   ],
+  focus: [],
   skill: null,
 };
 

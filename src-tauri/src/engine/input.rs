@@ -83,7 +83,9 @@ impl EngineInput {
 
         let active = data.active_player.as_ref();
         let abilities = active.map(|a| &a.abilities);
-        let ability_state = |pick: fn(&crate::live_client::model::Abilities) -> &crate::live_client::model::Ability| {
+        let ability_state = |pick: fn(
+            &crate::live_client::model::Abilities,
+        ) -> &crate::live_client::model::Ability| {
             abilities.map_or_else(AbilityState::default, |ab| {
                 let a = pick(ab);
                 AbilityState {

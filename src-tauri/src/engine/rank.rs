@@ -8,6 +8,7 @@
 use crate::engine::aggregate::{active_conditions, ActiveCondition};
 use crate::engine::classify::classify_enemy;
 use crate::engine::explain;
+use crate::engine::focus::focus_targets;
 use crate::engine::input::EngineInput;
 use crate::engine::skill::recommend_skill;
 use crate::model::{BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, ThreatProfile};
@@ -51,6 +52,13 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
     let demands = build_demands(&profiles, rules);
     let threats = profiles.iter().map(threat_view).collect();
 
+    // Who to focus in fights — framed for the player's own archetype (data-driven: branches only
+    // on `Archetype`/`LiveSignal`, never a champion name).
+    let focus = focus_targets(
+        rules.champion(&input.self_champion).map(|c| c.archetype),
+        &profiles,
+    );
+
     // Skill-order advice is independent of the build graph (an enemy-less champ still levels up),
     // so compute it once up front and attach it to whichever recommendation we return.
     let skill = rules
@@ -66,6 +74,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats,
+            focus,
             skill,
         };
     };
@@ -123,6 +132,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         build_path,
         swaps,
         threats,
+        focus,
         skill,
     }
 }

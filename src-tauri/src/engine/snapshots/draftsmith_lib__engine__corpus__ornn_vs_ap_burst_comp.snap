@@ -64,4 +64,11 @@ threats:
     signals:
       - fed
       - mobility
+focus:
+  - champion: Syndra
+    priority: primary
+    reason: "Lock down Syndra for your team — they're fed and snowballing."
+  - champion: Veigar
+    priority: secondary
+    reason: "Lock down Veigar for your team — they're fed and snowballing."
 skill: ~

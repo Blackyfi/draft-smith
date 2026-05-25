@@ -63,6 +63,13 @@ threats:
     archetype: catcher
     signals:
       - hard-cc
+focus:
+  - champion: Zed
+    priority: primary
+    reason: "Delete Zed — they're fed and snowballing."
+  - champion: Kaisa
+    priority: secondary
+    reason: Delete Kaisa — their squishiest high-value carry.
 skill:
   slot: W
   abilityName: Fox-Fire

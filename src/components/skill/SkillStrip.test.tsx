@@ -63,6 +63,7 @@ const REC_WITH_SKILL_NOW: Recommendation = {
   buildPath: [],
   swaps: [],
   threats: [],
+  focus: [],
   skill: {
     slot: "Q",
     abilityName: "Orb of Deception",
@@ -77,6 +78,7 @@ const REC_WITH_SKILL_LOOKAHEAD: Recommendation = {
   buildPath: [],
   swaps: [],
   threats: [],
+  focus: [],
   skill: {
     slot: "W",
     abilityName: "Fox-Fire",
@@ -91,6 +93,7 @@ const REC_NO_SKILL: Recommendation = {
   buildPath: [],
   swaps: [],
   threats: [],
+  focus: [],
   skill: null,
 };
 
