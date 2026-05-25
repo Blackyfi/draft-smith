@@ -156,6 +156,29 @@ pub struct EnemyThreatView {
     pub signals: Vec<LiveSignal>,
 }
 
+/// How urgently a focus target should be prioritized in fights (PROJECT_SPEC §5.2 — advisory).
+/// Derived data-drivenly from enemy archetypes + live signals; never from champion identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FocusPriority {
+    /// The single highest-value kill target.
+    Primary,
+    /// The next target down — worth focusing if the primary is unreachable.
+    Secondary,
+}
+
+/// One "who to focus in fights" suggestion: an enemy to prioritize, how urgently, and why. The
+/// `champion` is a display value echoed from the live profile — not a control-flow branch.
+/// Mirrors `FocusTarget` in `src/types.ts`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FocusTarget {
+    pub champion: String,
+    pub priority: FocusPriority,
+    /// Generated rationale, framed for the player's own archetype (e.g. "Delete Zed — …").
+    pub reason: String,
+}
+
 /// The full recommendation payload — the `recommendation-updated` event body (PROJECT_SPEC §4.2).
 /// Mirrors `Recommendation` in `src/types.ts`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -166,6 +189,8 @@ pub struct Recommendation {
     pub build_path: Vec<BuildStep>,
     pub swaps: Vec<SwapSuggestion>,
     pub threats: Vec<EnemyThreatView>,
+    /// Who to prioritize in fights (1–2 targets), framed for the player's archetype.
+    pub focus: Vec<FocusTarget>,
     /// Which ability to level next (skill-order coach), or `None` when DDragon/live data is
     /// insufficient or the champion has no authored skill plan.
     pub skill: Option<SkillAdvice>,

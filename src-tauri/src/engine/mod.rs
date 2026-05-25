@@ -15,6 +15,7 @@
 pub mod aggregate;
 pub mod classify;
 pub mod explain;
+pub mod focus;
 pub mod input;
 pub mod rank;
 pub mod skill;

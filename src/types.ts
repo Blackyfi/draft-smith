@@ -118,6 +118,23 @@ export interface EnemyThreatView {
 }
 
 /**
+ * Mirrors `FocusPriority` in `src-tauri/src/model/engine.rs` (serde `kebab-case`).
+ * How urgently to prioritize a focus target in fights.
+ */
+export type FocusPriority = "primary" | "secondary";
+
+/**
+ * Mirrors `FocusTarget` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * One "who to focus in fights" suggestion; `reason` is framed for the player's own archetype.
+ */
+export interface FocusTarget {
+  champion: string;
+  priority: FocusPriority;
+  /** Generated rationale (e.g. "Delete Zed — their squishiest high-value carry."). */
+  reason: string;
+}
+
+/**
  * Mirrors `AbilitySlot` in `src-tauri/src/model/engine.rs` (serde `UPPERCASE`).
  * The four ability *slots* — not the player's keybinds. The displayed key is a settings choice
  * (`abilityKeys`), so map this slot → letter on the frontend.
@@ -152,6 +169,8 @@ export interface Recommendation {
   buildPath: BuildStep[];
   swaps: SwapSuggestion[];
   threats: EnemyThreatView[];
+  /** Who to prioritize in fights (1–2 targets), framed for the player's archetype. */
+  focus: FocusTarget[];
   /** Which ability to level next, or null when unavailable / champion not authored. */
   skill: SkillAdvice | null;
 }

@@ -384,6 +384,7 @@ mod tests {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats: Vec::new(),
+            focus: Vec::new(),
             skill: None,
         });
         let mut sig = Some(StateSignature::from_data(&parse(FIXTURE)));

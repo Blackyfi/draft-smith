@@ -18,6 +18,11 @@ pub use ddragon::DdragonStatus;
 pub use engine::{
     BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, TeamThreat, ThreatProfile,
 };
+// `FocusPriority`/`FocusTarget` are part of the typed FE↔Rust contract (carried inside
+// `Recommendation`, mirrored in `src/types.ts`); the engine references them via
+// `crate::model::engine::*`, so the re-exports are contract surface, not yet named here.
+#[allow(unused_imports)]
+pub use engine::{FocusPriority, FocusTarget};
 pub use game::GameStateSummary;
 pub use item::ItemMeta;
 // `Aggressiveness`/`Theme` are part of the typed FE↔Rust settings contract (mirrored in

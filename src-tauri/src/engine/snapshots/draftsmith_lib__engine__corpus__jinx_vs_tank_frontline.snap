@@ -75,4 +75,11 @@ threats:
       - health-stacking
       - hard-cc
       - mobility
+focus:
+  - champion: Darius
+    priority: primary
+    reason: "Delete Darius — they're fed and snowballing."
+  - champion: Ornn
+    priority: secondary
+    reason: Delete Ornn — the best target available.
 skill: ~

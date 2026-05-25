@@ -64,4 +64,11 @@ threats:
     signals:
       - has-sustain
       - hard-cc
+focus:
+  - champion: Vladimir
+    priority: primary
+    reason: "Pressure and dive Vladimir — they're fed and snowballing."
+  - champion: Soraka
+    priority: secondary
+    reason: "Pressure and dive Soraka — a squishy, high-value target."
 skill: ~
