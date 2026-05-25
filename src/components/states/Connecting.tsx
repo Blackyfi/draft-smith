@@ -16,7 +16,7 @@ export function Connecting() {
         <Skeleton className="h-3 w-20" />
         <div className="flex gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-[104px] w-28 rounded-lg" />
+            <Skeleton key={i} className="h-[84px] w-28 rounded-lg" />
           ))}
         </div>
       </div>

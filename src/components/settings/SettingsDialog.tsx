@@ -116,7 +116,10 @@ export function SettingsDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-5 py-2">
+        {/* Scroll region: bounded by the dialog's max-height so the header + close button stay
+            pinned and reachable even on short windows. The -mr-2 pr-2 keeps the themed scrollbar
+            flush with the dialog edge without crowding the controls. */}
+        <div className="-mr-2 grid min-h-0 flex-1 gap-5 overflow-y-auto py-1 pr-2">
           {/* Poll interval */}
           <div className="grid gap-1.5">
             <Label htmlFor="poll-interval">Poll interval</Label>

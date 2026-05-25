@@ -9,7 +9,7 @@ export function ErrorState() {
   return (
     <div
       role="alert"
-      className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center"
+      className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center"
     >
       <div className="flex size-16 items-center justify-center rounded-full bg-muted">
         <AlertTriangle className="size-8 text-amber-400" aria-hidden="true" />

@@ -73,6 +73,8 @@
 }
 
 @theme inline {
+  /* Shared max width of the centered content column (header / main / footer stay aligned). */
+  --container-app: 30rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -116,6 +118,35 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Themed scrollbars — the native OS scrollbar (chunky, light on Windows) clashes with the
+     dark app surface, most visibly on the in-game dashboard. These track the design tokens so the
+     scrollbar reads as part of the app in both themes. WebView2 is Chromium, so ::-webkit-* applies;
+     Firefox/standard fallbacks are kept for completeness. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent)
+      transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 

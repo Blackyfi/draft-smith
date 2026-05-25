@@ -49,58 +49,60 @@ export function Header({ status }: { status: ConnectionStatus }) {
   const updateAvailable = updateStatus === "available";
 
   return (
-    <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
-      <div className="flex min-w-0 items-center gap-2">
-        {inGame && champion ? (
-          <>
-            <ChampionAvatar
-              name={champion}
-              label={championName}
-              className="size-8"
-            />
-            <span className="truncate text-sm font-semibold tracking-tight">
-              {championName}
+    <header className="border-b">
+      <div className="mx-auto flex w-full max-w-app items-center justify-between gap-2 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {inGame && champion ? (
+            <>
+              <ChampionAvatar
+                name={champion}
+                label={championName}
+                className="size-8"
+              />
+              <span className="truncate text-sm font-semibold tracking-tight">
+                {championName}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm font-semibold tracking-tight">
+              DraftSmith
             </span>
-          </>
-        ) : (
-          <span className="text-sm font-semibold tracking-tight">
-            DraftSmith
-          </span>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
-        {inGame && game && (
-          <span className="tabular-nums" aria-label="Game time">
-            {formatClock(game.gameTime)}
-          </span>
-        )}
-        <span className="flex items-center gap-1.5">
-          <span
-            className={cn("size-2 rounded-full", STATUS_DOT[status])}
-            aria-hidden="true"
-          />
-          {STATUS_LABEL[status]}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative size-7"
-          aria-label={
-            updateAvailable
-              ? "Open settings (update available)"
-              : "Open settings"
-          }
-          onClick={() => setSettingsOpen(true)}
-        >
-          <SettingsIcon className="size-4" aria-hidden="true" />
-          {updateAvailable && (
-            <span
-              className="absolute right-0.5 top-0.5 size-2 rounded-full bg-amber-400"
-              aria-label="Update available"
-              title="Update available"
-            />
           )}
-        </Button>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+          {inGame && game && (
+            <span className="tabular-nums" aria-label="Game time">
+              {formatClock(game.gameTime)}
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <span
+              className={cn("size-2 rounded-full", STATUS_DOT[status])}
+              aria-hidden="true"
+            />
+            {STATUS_LABEL[status]}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative size-7"
+            aria-label={
+              updateAvailable
+                ? "Open settings (update available)"
+                : "Open settings"
+            }
+            onClick={() => setSettingsOpen(true)}
+          >
+            <SettingsIcon className="size-4" aria-hidden="true" />
+            {updateAvailable && (
+              <span
+                className="absolute right-0.5 top-0.5 size-2 rounded-full bg-amber-400"
+                aria-label="Update available"
+                title="Update available"
+              />
+            )}
+          </Button>
+        </div>
       </div>
     </header>
   );
