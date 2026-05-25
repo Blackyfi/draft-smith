@@ -2,6 +2,20 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.4
+
+- **Settings no longer traps you** — on shorter or smaller windows the Settings panel could center
+  off-screen with its close button out of reach, forcing an app restart. The panel now keeps its
+  title and close button pinned and scrolls its contents, so you can always get out.
+- **Looks intentional at any size** — the layout now centers a comfortable column when the window is
+  maximized or stretched, instead of spreading thin edge-to-edge.
+- **Taller default window** — the in-game page is taller now that it shows focus targets, so the
+  window opens taller to keep the build path, threats, and situational swaps in view without
+  scrolling.
+- **More compact build cards** — the item build-path cards are about a third shorter, so more of the
+  in-game page fits at once (the full item name is still in each card's tooltip).
+- **Themed scrollbar** — the in-game scrollbar matches the app's look instead of the default OS bar.
+
 ## 0.1.3
 
 - **Skill-order coach** — DraftSmith now tells you which ability to level next, every level. Reads

@@ -37,8 +37,13 @@ function App() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <Header status={current} />
+      {/* Center a comfortable reading column so the app looks intentional at any window size
+          (compact overlay → maximized) instead of stretching edge-to-edge. The scrollbar sits at
+          the window edge; the content stays centered within max-w-app. */}
       <main className="min-h-0 flex-1 overflow-y-auto">
-        {renderMain(current, recommendation)}
+        <div className="mx-auto flex min-h-full w-full max-w-app flex-col">
+          {renderMain(current, recommendation)}
+        </div>
       </main>
       <Footer />
       <SettingsDialog />
