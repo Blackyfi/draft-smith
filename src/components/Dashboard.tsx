@@ -5,6 +5,7 @@ import { SkillStrip } from "@/components/skill/SkillStrip";
 import { Connecting } from "@/components/states/Connecting";
 import { SwapStrip } from "@/components/swaps/SwapStrip";
 import { EnemyThreatBoard } from "@/components/threat/EnemyThreatBoard";
+import { FocusCallout } from "@/components/threat/FocusCallout";
 import type { Recommendation } from "@/types";
 
 /**
@@ -38,6 +39,7 @@ export function Dashboard({
         </p>
       )}
 
+      <FocusCallout />
       <EnemyThreatBoard threats={recommendation.threats} />
       <SwapStrip swaps={recommendation.swaps} />
     </div>

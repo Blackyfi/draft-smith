@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { DatabaseIcon, RefreshCwIcon } from "lucide-react";
+import React, { useState } from "react";
+import {
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DatabaseIcon,
+  DownloadIcon,
+  RefreshCwIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,8 +26,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useAppVersion } from "@/hooks/useAppVersion";
+import { useChangelog } from "@/hooks/useChangelog";
 import { useSettings } from "@/hooks/useSettings";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { api } from "@/lib/tauri";
+import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
 import type { KeyLayout } from "@/types";
 
@@ -189,9 +200,7 @@ export function SettingsDialog() {
 
           {/* Aggressiveness */}
           <div className="grid gap-1.5">
-            <Label htmlFor="aggressiveness-select">
-              Recommendation style
-            </Label>
+            <Label htmlFor="aggressiveness-select">Recommendation style</Label>
             <Select
               value={settings.aggressiveness}
               onValueChange={(v) =>
@@ -209,9 +218,8 @@ export function SettingsDialog() {
               </SelectContent>
             </Select>
             <p className="text-[11px] text-muted-foreground">
-              Rules only uses the data-driven rule engine (Tier A).
-              Stats-biased will blend win-rate data in a future update (Tier B /
-              M7).
+              Rules only uses the data-driven rule engine (Tier A). Stats-biased
+              will blend win-rate data in a future update (Tier B / M7).
             </p>
           </div>
 
@@ -222,7 +230,10 @@ export function SettingsDialog() {
               value={settings.abilityKeys.layout}
               onValueChange={(v) =>
                 update({
-                  abilityKeys: { ...settings.abilityKeys, layout: v as KeyLayout },
+                  abilityKeys: {
+                    ...settings.abilityKeys,
+                    layout: v as KeyLayout,
+                  },
                 })
               }
             >
@@ -255,7 +266,12 @@ export function SettingsDialog() {
                           ...settings.abilityKeys.custom,
                         ] as [string, string, string, string];
                         next[i] = e.target.value.slice(-1).toUpperCase();
-                        update({ abilityKeys: { ...settings.abilityKeys, custom: next } });
+                        update({
+                          abilityKeys: {
+                            ...settings.abilityKeys,
+                            custom: next,
+                          },
+                        });
                       }}
                       aria-label={`Custom key for slot ${slot}`}
                       className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-center text-sm font-bold uppercase shadow-xs outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -307,8 +323,218 @@ export function SettingsDialog() {
               cache wipes local data and re-downloads everything.
             </p>
           </div>
+
+          {/* About & Updates */}
+          <AboutSection />
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── status dot colours (always paired with text) ──────────────────────────────
+const DOT_CLASS: Record<string, string> = {
+  checking: "bg-muted-foreground/50",
+  "up-to-date": "bg-emerald-500",
+  available: "bg-amber-400",
+  error: "bg-muted-foreground/50",
+};
+
+/**
+ * "About & Updates" section rendered inside SettingsDialog. Extracted to keep the parent concise;
+ * consumes the shared useUpdateCheck / useAppVersion / useChangelog queries.
+ */
+function AboutSection() {
+  const { data: version } = useAppVersion();
+  const { update, status, refetch } = useUpdateCheck();
+  const changelog = useChangelog();
+
+  const [installing, setInstalling] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+
+  async function handleInstall() {
+    setInstalling(true);
+    try {
+      await api.installUpdate();
+      // App relaunches — no further action needed.
+    } catch {
+      toast.error("Update failed", {
+        description: "Could not install the update. Please try again later.",
+      });
+      setInstalling(false);
+    }
+  }
+
+  function handleToggleChangelog() {
+    if (!changelogOpen) {
+      // Trigger a fetch on first open (query has enabled:false by default).
+      void changelog.refetch();
+    }
+    setChangelogOpen((prev) => !prev);
+  }
+
+  const statusText: Record<string, string> = {
+    checking: "Checking for updates…",
+    "up-to-date": `You're on the latest version${version ? ` (v${version})` : ""}.`,
+    available: `Update available: v${update?.version ?? ""}`,
+    error: "Couldn't check for updates",
+  };
+
+  return (
+    <div className="grid gap-2">
+      <Label>About &amp; Updates</Label>
+
+      {/* Version row */}
+      <p className="text-sm font-medium">
+        DraftSmith{version ? ` v${version}` : ""}
+      </p>
+
+      {/* Update status row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={cn("size-2 rounded-full", DOT_CLASS[status])}
+            aria-hidden="true"
+          />
+          <span className="text-xs text-muted-foreground">
+            {statusText[status]}
+          </span>
+          {status === "up-to-date" && (
+            <CheckCircleIcon
+              className="size-3.5 text-emerald-500"
+              aria-hidden="true"
+            />
+          )}
+        </span>
+
+        {status === "available" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleInstall}
+            disabled={installing}
+            aria-busy={installing}
+            className="gap-1.5"
+          >
+            <DownloadIcon className="size-3.5" aria-hidden="true" />
+            {installing ? "Installing…" : "Update now"}
+          </Button>
+        )}
+
+        {status === "error" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={refetch}
+            className="gap-1.5"
+          >
+            <RefreshCwIcon className="size-3.5" aria-hidden="true" />
+            Retry
+          </Button>
+        )}
+      </div>
+
+      {/* What's new toggle */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleToggleChangelog}
+        className="w-fit gap-1.5 px-0 text-xs text-muted-foreground hover:text-foreground"
+        aria-expanded={changelogOpen}
+      >
+        {changelogOpen ? (
+          <ChevronUpIcon className="size-3.5" aria-hidden="true" />
+        ) : (
+          <ChevronDownIcon className="size-3.5" aria-hidden="true" />
+        )}
+        What&apos;s new
+      </Button>
+
+      {changelogOpen && (
+        <ChangelogPanel
+          content={changelog.data ?? null}
+          loading={changelog.isFetching}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Renders the changelog markdown in a scrollable region without a markdown library. */
+function ChangelogPanel({
+  content,
+  loading,
+}: {
+  content: string | null;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div
+        className="flex h-24 items-center justify-center rounded-md border border-border bg-muted/30 text-xs text-muted-foreground"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        Loading…
+      </div>
+    );
+  }
+
+  if (!content) {
+    return (
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        No changelog available.
+      </div>
+    );
+  }
+
+  // Minimal inline renderer: ## / ### headings and - bullets, everything else as paragraphs.
+  const lines = content.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (line.startsWith("### ")) {
+      nodes.push(
+        <h4
+          key={key++}
+          className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          {line.slice(4)}
+        </h4>,
+      );
+    } else if (line.startsWith("## ")) {
+      nodes.push(
+        <h3
+          key={key++}
+          className="mt-3 text-xs font-semibold text-foreground first:mt-0"
+        >
+          {line.slice(3)}
+        </h3>,
+      );
+    } else if (line.startsWith("- ")) {
+      nodes.push(
+        <li key={key++} className="ml-3 text-xs text-muted-foreground">
+          {line.slice(2)}
+        </li>,
+      );
+    } else if (line.trim() !== "") {
+      nodes.push(
+        <p key={key++} className="text-xs text-muted-foreground">
+          {line}
+        </p>,
+      );
+    }
+  }
+
+  return (
+    <div
+      role="region"
+      aria-label="Changelog"
+      className="max-h-48 overflow-y-auto rounded-md border border-border bg-muted/30 px-3 py-2"
+    >
+      <ul className="flex flex-col gap-0.5">{nodes}</ul>
+    </div>
   );
 }

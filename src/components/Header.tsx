@@ -4,6 +4,7 @@ import { ChampionAvatar } from "@/components/icons/ChampionAvatar";
 import { Button } from "@/components/ui/button";
 import { useGameState } from "@/hooks/useGameState";
 import { useChampionName } from "@/hooks/useIcon";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
 import type { ConnectionStatus } from "@/types";
@@ -44,6 +45,8 @@ export function Header({ status }: { status: ConnectionStatus }) {
   const championName = useChampionName(champion);
   const inGame = status === "in-game";
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const { status: updateStatus } = useUpdateCheck();
+  const updateAvailable = updateStatus === "available";
 
   return (
     <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
@@ -81,11 +84,22 @@ export function Header({ status }: { status: ConnectionStatus }) {
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
-          aria-label="Open settings"
+          className="relative size-7"
+          aria-label={
+            updateAvailable
+              ? "Open settings (update available)"
+              : "Open settings"
+          }
           onClick={() => setSettingsOpen(true)}
         >
           <SettingsIcon className="size-4" aria-hidden="true" />
+          {updateAvailable && (
+            <span
+              className="absolute right-0.5 top-0.5 size-2 rounded-full bg-amber-400"
+              aria-label="Update available"
+              title="Update available"
+            />
+          )}
         </Button>
       </div>
     </header>

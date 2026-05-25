@@ -145,6 +145,9 @@ describe("FE↔Rust live loop", () => {
       aggressiveness: "rules-only",
       abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
     });
+    tauri.invokeHandlers["get_app_version"] = () => "0.1.3";
+    tauri.invokeHandlers["check_for_update"] = () => null;
+    tauri.invokeHandlers["get_changelog"] = () => "## 0.1.3\n- test";
   });
 
   it("renders the build, threats, and swaps from the seeded recommendation", async () => {
