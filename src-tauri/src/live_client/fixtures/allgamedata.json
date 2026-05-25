@@ -1,0 +1,183 @@
+{
+  "activePlayer": {
+    "summonerName": "",
+    "riotIdGameName": "Faker",
+    "level": 9,
+    "currentGold": 1342.5,
+    "championStats": {
+      "abilityPower": 80.0,
+      "armor": 42.0,
+      "magicResist": 32.1
+    }
+  },
+  "allPlayers": [
+    {
+      "championName": "Ahri",
+      "rawChampionName": "game_character_displayname_Ahri",
+      "summonerName": "",
+      "riotId": "Faker#KR1",
+      "team": "ORDER",
+      "position": "MIDDLE",
+      "level": 9,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 6655, "count": 1, "slot": 0, "displayName": "Luden's Companion" },
+        { "itemID": 3020, "count": 1, "slot": 1, "displayName": "Sorcerer's Shoes" },
+        { "itemID": 2003, "count": 2, "slot": 5, "displayName": "Health Potion" }
+      ],
+      "scores": { "kills": 3, "deaths": 1, "assists": 5, "creepScore": 110, "wardScore": 12.4 }
+    },
+    {
+      "championName": "Sett",
+      "rawChampionName": "game_character_displayname_Sett",
+      "summonerName": "",
+      "riotId": "Toplaner#EUW",
+      "team": "ORDER",
+      "position": "TOP",
+      "level": 9,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 3068, "count": 1, "slot": 0, "displayName": "Sunfire Aegis" },
+        { "itemID": 3047, "count": 1, "slot": 1, "displayName": "Plated Steelcaps" }
+      ],
+      "scores": { "kills": 1, "deaths": 2, "assists": 4, "creepScore": 95, "wardScore": 8.0 }
+    },
+    {
+      "championName": "LeeSin",
+      "rawChampionName": "game_character_displayname_LeeSin",
+      "summonerName": "",
+      "riotId": "Jungler#NA1",
+      "team": "ORDER",
+      "position": "JUNGLE",
+      "level": 8,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 6692, "count": 1, "slot": 0, "displayName": "Eclipse" }
+      ],
+      "scores": { "kills": 4, "deaths": 3, "assists": 6, "creepScore": 78, "wardScore": 15.2 }
+    },
+    {
+      "championName": "Jinx",
+      "rawChampionName": "game_character_displayname_Jinx",
+      "summonerName": "",
+      "riotId": "ADCarry#OCE",
+      "team": "ORDER",
+      "position": "BOTTOM",
+      "level": 8,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 3031, "count": 1, "slot": 0, "displayName": "Infinity Edge" }
+      ],
+      "scores": { "kills": 5, "deaths": 1, "assists": 3, "creepScore": 130, "wardScore": 6.5 }
+    },
+    {
+      "championName": "Thresh",
+      "rawChampionName": "game_character_displayname_Thresh",
+      "summonerName": "",
+      "riotId": "Support#KR1",
+      "team": "ORDER",
+      "position": "UTILITY",
+      "level": 7,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 3865, "count": 1, "slot": 0, "displayName": "World Atlas" }
+      ],
+      "scores": { "kills": 0, "deaths": 2, "assists": 11, "creepScore": 22, "wardScore": 34.1 }
+    },
+    {
+      "championName": "Zed",
+      "rawChampionName": "game_character_displayname_Zed",
+      "summonerName": "",
+      "riotId": "EnemyMid#KR1",
+      "team": "CHAOS",
+      "position": "MIDDLE",
+      "level": 9,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 6692, "count": 1, "slot": 0, "displayName": "Eclipse" },
+        { "itemID": 3158, "count": 1, "slot": 1, "displayName": "Ionian Boots of Lucidity" }
+      ],
+      "scores": { "kills": 4, "deaths": 2, "assists": 2, "creepScore": 118, "wardScore": 9.0 }
+    },
+    {
+      "championName": "Darius",
+      "rawChampionName": "game_character_displayname_Darius",
+      "summonerName": "",
+      "riotId": "EnemyTop#EUW",
+      "team": "CHAOS",
+      "position": "TOP",
+      "level": 9,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 6630, "count": 1, "slot": 0, "displayName": "Goredrinker" },
+        { "itemID": 3047, "count": 1, "slot": 1, "displayName": "Plated Steelcaps" }
+      ],
+      "scores": { "kills": 3, "deaths": 1, "assists": 1, "creepScore": 102, "wardScore": 7.7 }
+    },
+    {
+      "championName": "Vi",
+      "rawChampionName": "game_character_displayname_Vi",
+      "summonerName": "",
+      "riotId": "EnemyJgl#NA1",
+      "team": "CHAOS",
+      "position": "JUNGLE",
+      "level": 8,
+      "isBot": false,
+      "isDead": true,
+      "items": [
+        { "itemID": 3071, "count": 1, "slot": 0, "displayName": "Black Cleaver" }
+      ],
+      "scores": { "kills": 2, "deaths": 4, "assists": 5, "creepScore": 71, "wardScore": 13.3 }
+    },
+    {
+      "championName": "Kaisa",
+      "rawChampionName": "game_character_displayname_Kaisa",
+      "summonerName": "",
+      "riotId": "EnemyAdc#OCE",
+      "team": "CHAOS",
+      "position": "BOTTOM",
+      "level": 8,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 3124, "count": 1, "slot": 0, "displayName": "Guinsoo's Rageblade" }
+      ],
+      "scores": { "kills": 3, "deaths": 2, "assists": 2, "creepScore": 124, "wardScore": 5.1 }
+    },
+    {
+      "championName": "Leona",
+      "rawChampionName": "game_character_displayname_Leona",
+      "summonerName": "",
+      "riotId": "EnemySup#KR1",
+      "team": "CHAOS",
+      "position": "UTILITY",
+      "level": 6,
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        { "itemID": 3869, "count": 1, "slot": 0, "displayName": "Celestial Opposition" }
+      ],
+      "scores": { "kills": 1, "deaths": 3, "assists": 8, "creepScore": 18, "wardScore": 28.9 }
+    }
+  ],
+  "events": {
+    "Events": [
+      { "EventID": 0, "EventName": "GameStart", "EventTime": 0.0 },
+      { "EventID": 1, "EventName": "MinionsSpawning", "EventTime": 65.0 }
+    ]
+  },
+  "gameData": {
+    "gameMode": "CLASSIC",
+    "gameTime": 754.3,
+    "mapName": "Map11",
+    "mapNumber": 11,
+    "mapTerrain": "Default"
+  }
+}

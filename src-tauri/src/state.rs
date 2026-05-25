@@ -1,7 +1,10 @@
 //! Tauri-managed application state.
 
 use crate::ddragon::ResolvedData;
+use crate::live_client::AllGameData;
+use crate::model::ConnectionStatus;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tokio::sync::RwLock;
 
 /// In-memory DDragon data plus the on-disk cache location.
@@ -18,6 +21,27 @@ impl DdragonState {
         Self {
             cache_root,
             data: RwLock::new(None),
+        }
+    }
+}
+
+/// Live game state owned by the M2 poller.
+///
+/// `status` is the current [`ConnectionStatus`] (read by the `get_status` command); the poller
+/// updates it and emits `connection-status` on transitions. `snapshot` holds the latest parsed
+/// `/allgamedata`, populated while in-game and cleared when the game ends. A plain `Mutex` guards
+/// the tiny status; the larger snapshot uses an async `RwLock` since the poller writes it from
+/// async code.
+pub struct LiveState {
+    pub status: Mutex<ConnectionStatus>,
+    pub snapshot: RwLock<Option<AllGameData>>,
+}
+
+impl Default for LiveState {
+    fn default() -> Self {
+        Self {
+            status: Mutex::new(ConnectionStatus::NoGame),
+            snapshot: RwLock::new(None),
         }
     }
 }

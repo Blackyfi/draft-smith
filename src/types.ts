@@ -19,6 +19,22 @@ export type ConnectionStatus = "no-game" | "connecting" | "in-game" | "error";
 export type DdragonStatus = "checking" | "updating" | "ready" | "offline";
 
 /**
+ * Mirrors `GameStateSummary` in `src-tauri/src/model/game.rs` (serde `camelCase`).
+ * Emitted as the `game-state-changed` event (PROJECT_SPEC §4.2) when the poll diff detects a
+ * meaningful change. The full recommendation arrives separately via `recommendation-updated`.
+ */
+export interface GameStateSummary {
+  /** Seconds since game start. */
+  gameTime: number;
+  /** Game mode (e.g. "CLASSIC"). */
+  gameMode: string;
+  /** Local player's champion display name, or null if not yet identifiable. */
+  selfChampion: string | null;
+  /** Number of players in the game (both teams). */
+  playerCount: number;
+}
+
+/**
  * Mirrors `ItemMeta` in `src-tauri/src/model/item.rs` (serde `camelCase`).
  * Raw Data Dragon metadata — no engine logic; intent-tags live in the Rust `rules/data`.
  */

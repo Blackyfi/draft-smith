@@ -27,8 +27,12 @@ tauri-plugin-log = "2"
 # is rustls validated by the OS trust store (rustls-platform-verifier) — no system OpenSSL.
 # `json` adds typed body (de)serialization.
 reqwest = { version = "0.13", features = ["json"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "time"] }
 thiserror = "2"
 
 [dev-dependencies]
 tempfile = "3"
+# A throwaway local HTTP server for testing the Live Client poller against captured
+# `/allgamedata` JSON, so M2 is verifiable without launching League (PROJECT_SPEC §9, M2).
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "test-util"] }
