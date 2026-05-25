@@ -4,6 +4,6 @@
     "Ahri": { "maxOrder": ["Q", "W", "E"] },
     "Jinx": { "maxOrder": ["Q", "W", "E"] },
     "Sett": { "maxOrder": ["Q", "W", "E"] },
-    "Ornn": { "maxOrder": ["Q", "W", "E"] }
+    "Ornn": { "maxOrder": ["W", "E", "Q"] }
   }
 }
