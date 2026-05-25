@@ -27,9 +27,11 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let pin_on_top: CheckMenuItem<R> = CheckMenuItemBuilder::with_id("pin_on_top", "Pin on top")
         .checked(pinned)
         .build(app)?;
+    let check_updates =
+        MenuItemBuilder::with_id("check_updates", "Check for updates…").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit DraftSmith").build(app)?;
     let menu = MenuBuilder::new(app)
-        .items(&[&show_hide, &settings, &pin_on_top, &quit])
+        .items(&[&show_hide, &settings, &pin_on_top, &check_updates, &quit])
         .build()?;
 
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
@@ -41,6 +43,7 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             "show_hide" => toggle_main_window(app),
             "settings" => open_settings(app),
             "pin_on_top" => toggle_pin_on_top(app, &pin_on_top),
+            "check_updates" => check_for_updates(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -88,6 +91,15 @@ fn open_settings<R: Runtime>(app: &AppHandle<R>) {
         let _ = window.set_focus();
     }
     let _ = app.emit("open-settings", ());
+}
+
+/// Runs the advisory update check (PROJECT_SPEC §6.2). Desktop-only — the updater module isn't
+/// compiled on mobile, where updates come from the app store.
+fn check_for_updates<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(desktop)]
+    crate::updater::check_for_updates(app, true);
+    #[cfg(not(desktop))]
+    let _ = app;
 }
 
 /// Flips the persisted pin-on-top setting, applies it to the main window, and syncs the menu check.

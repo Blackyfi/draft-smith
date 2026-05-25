@@ -7,13 +7,26 @@ mod poll;
 mod rules;
 mod state;
 mod tray;
+// Auto-updater is desktop-only; mobile platforms update through their app stores.
+#[cfg(desktop)]
+mod updater;
 
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_log::{Target, TargetKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Auto-updater (M6): the plugin and the native dialog it prompts through are desktop-only.
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_dialog::init());
+    }
+
+    builder
         .setup(|app| {
             // Log to a file in every build (PROJECT_SPEC §6.4 "log to file"), plus stdout in debug.
             let mut targets = vec![Target::new(TargetKind::LogDir { file_name: None })];

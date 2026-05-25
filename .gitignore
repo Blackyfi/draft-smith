@@ -9,6 +9,11 @@ dist-ssr/
 /src-tauri/target/
 target/
 
+# Signing material — must never be committed (keys live in ~/.tauri and CI secrets)
+*.pfx
+*.key
+*.key.pub
+
 # Claude local overrides (personal, not team-wide)
 .claude/settings.local.json
 
