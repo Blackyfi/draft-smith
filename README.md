@@ -83,10 +83,43 @@ npm run tauri dev      # in another — the build re-ranks as the mock "enemies"
 
 ## Packaging, signing & auto-update
 
-`npm run tauri build` produces a Windows **NSIS** installer
-(`DraftSmith_<version>_x64-setup.exe`) plus the minisign-signed updater artifacts
-under `src-tauri/target/release/bundle/nsis/`. The local build is **unsigned**
-(Authenticode), which keeps it independent of the Windows SDK.
+### Build a local installer
+
+```bash
+npm run tauri build
+```
+
+The installer lands at:
+
+```
+src-tauri/target/release/bundle/nsis/DraftSmith_<version>_x64-setup.exe
+```
+
+(alongside `…_x64-setup.exe.sig`, the updater signature). A local build is
+**unsigned** (Authenticode), which keeps it independent of the Windows SDK — good
+for testing on your own machine. For a build you hand to others, cut a release
+(below) so it's signed and auto-updatable.
+
+### Cutting a release (signed, published, auto-updatable)
+
+Releases are produced by GitHub Actions, not by hand. To publish version `x.y.z`:
+
+1. Bump the version in **both** `package.json` and `src-tauri/tauri.conf.json`
+   (and `src-tauri/Cargo.toml`), and commit it.
+2. Tag and push:
+   ```bash
+   git tag v0.1.1
+   git push origin v0.1.1
+   ```
+3. The **`release.yml`** workflow builds + signs the installer and creates a
+   **draft GitHub Release** with the installer, its `.sig`, and `latest.json`
+   (the file the auto-updater reads).
+4. Go to **https://github.com/Blackyfi/draft-smith/releases**, open the draft,
+   and click **Publish release**. The installer is the `…_x64-setup.exe` asset;
+   that's the file users download.
+
+> The signing secrets (`TAURI_SIGNING_PRIVATE_KEY`, `WINDOWS_CERTIFICATE`, …) must
+> already be set in the repo (see [CI / release secrets](#ci--release-secrets)).
 
 ### Code signing (Windows)
 
@@ -117,11 +150,14 @@ Export-PfxCertificate -Cert $cert -FilePath "$env:USERPROFILE\.tauri\draftsmith_
 
 ### Auto-updater
 
-DraftSmith ships `tauri-plugin-updater`. The tray menu **"Check for updates…"**
-checks the GitHub Releases endpoint in `tauri.conf.json`
-(`plugins.updater.endpoints`), and — after asking — downloads, installs, and
-relaunches. Update bundles are verified against the **minisign public key**
-embedded in `tauri.conf.json` (`plugins.updater.pubkey`).
+**Yes — DraftSmith has built-in auto-update.** It ships `tauri-plugin-updater`.
+Right-click the tray icon → **"Check for updates…"**: the app queries the latest
+GitHub Release, and if a newer version exists it asks for confirmation, then
+downloads, installs, and relaunches itself. It only finds something once you've
+**published a newer release** (see above) — an installed `0.1.0` will offer to
+update the moment `0.1.1` is published. Update bundles are cryptographically
+verified against the **minisign public key** embedded in `tauri.conf.json`
+(`plugins.updater.pubkey`), so a tampered update is rejected.
 
 Generate the updater keypair once:
 
