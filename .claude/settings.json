@@ -37,7 +37,13 @@
           {
             "type": "command",
             "command": "powershell",
-            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/hooks/format-after-edit.ps1"],
+            "args": [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              ".claude/hooks/format-after-edit.ps1"
+            ],
             "timeout": 120,
             "statusMessage": "Formatting + linting edited file"
           }
@@ -51,7 +57,13 @@
           {
             "type": "command",
             "command": "powershell",
-            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/hooks/block-destructive.ps1"],
+            "args": [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              ".claude/hooks/block-destructive.ps1"
+            ],
             "timeout": 15,
             "statusMessage": "Checking command safety"
           }
