@@ -16,6 +16,12 @@ export function useDdragonStatus() {
 
   useTauriEvent("ddragon-status", (status) => {
     queryClient.setQueryData<DdragonStatus>(KEY, status);
+    // Reaching a terminal state means the Rust core has set its data (the patch version is now
+    // available), so re-fetch the version. Anything gated on DDragon readiness — icon and
+    // champion-name lookups — unblocks and resolves once this flips non-null.
+    if (status === "ready" || status === "offline") {
+      void queryClient.invalidateQueries({ queryKey: ["ddragon-version"] });
+    }
   });
 
   return useQuery({

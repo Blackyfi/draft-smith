@@ -132,6 +132,9 @@ describe("FE↔Rust live loop", () => {
     tauri.invokeHandlers["get_current_recommendation"] = () => REC_A;
     tauri.invokeHandlers["get_champion_icon_by_name"] = () => null;
     tauri.invokeHandlers["get_item_icon"] = () => null;
+    tauri.invokeHandlers["get_ddragon_version"] = () => "16.10.1";
+    tauri.invokeHandlers["get_champion_display_name"] = (args) =>
+      (args as { name: string }).name;
   });
 
   it("renders the build, threats, and swaps from the seeded recommendation", async () => {
