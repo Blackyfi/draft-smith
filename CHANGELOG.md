@@ -2,6 +2,18 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.5
+
+- **Meta build panel** — alongside the matchup-aware "Adapt" build, DraftSmith now shows the
+  highest win-rate build for your champion and role on the current patch. It's the "what wins on
+  average" reference — core items, starting items, situational options with their win rates, and the
+  skill order — shown beside the live recommendation so you can weigh "best on average" against
+  "best versus *this* enemy team".
+- **Role toggle** — switch the Meta build between the roles your champion is played in; it defaults
+  to the most-played one.
+- **Rank filter** — choose which rank's stats the Meta build reflects (Diamond+ by default) in
+  Settings, or hide the panel entirely.
+
 ## 0.1.4
 
 - **Settings no longer traps you** — on shorter or smaller windows the Settings panel could center
