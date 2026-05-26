@@ -55,6 +55,8 @@ const DEFAULT_SETTINGS: Settings = {
   },
   metaRank: "diamond_plus",
   showMetaPanel: true,
+  gankAlertsEnabled: true,
+  gankAlertSound: true,
 };
 
 // ---------- Helpers ----------

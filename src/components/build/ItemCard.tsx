@@ -37,7 +37,7 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
           )}
         >
           {isNext && (
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
+            <span className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
               Next
             </span>
           )}

@@ -7,14 +7,16 @@
 
 use crate::engine::aggregate::{active_conditions, ActiveCondition};
 use crate::engine::classify::classify_enemy;
+use crate::engine::durability;
 use crate::engine::explain;
 use crate::engine::focus::focus_targets;
-use crate::engine::input::EngineInput;
+use crate::engine::input::{EnemyInput, EngineInput};
 use crate::engine::skill::recommend_skill;
+use crate::model::engine::{DamageType, IntentTag, ItemIntel, LiveSignal};
 use crate::model::{
     AbilityRanks, BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, ThreatProfile,
 };
-use crate::rules::{CounterRule, RuleSet};
+use crate::rules::{CounterCondition, CounterRule, RuleSet};
 
 /// Total items in the recommended path (anchors + boots + situational), I1→I6.
 const BUILD_PATH_LEN: usize = 6;
@@ -52,7 +54,17 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         .collect();
 
     let demands = build_demands(&profiles, rules);
-    let threats = profiles.iter().map(threat_view).collect();
+    // The player's primary-nuke damage profile, shared across every enemy's durability estimate.
+    let ability = rules.ability_damage(&input.self_champion);
+    let threats = input
+        .enemies
+        .iter()
+        .zip(&profiles)
+        .map(|(e, p)| threat_view(p, e, input, ability))
+        .collect();
+
+    // Abstract intel about every known enemy item — built once, shared by both return paths.
+    let enemy_items = enemy_item_intel(input, rules);
 
     // Who to focus in fights — framed for the player's own archetype (data-driven: branches only
     // on `Archetype`/`LiveSignal`, never a champion name).
@@ -85,6 +97,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats,
+            enemy_items,
             focus,
             skill,
             ability_ranks,
@@ -144,6 +157,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         build_path,
         swaps,
         threats,
+        enemy_items,
         focus,
         skill,
         ability_ranks,
@@ -255,10 +269,121 @@ fn swap_suggestion(scored: &Scored, rules: &RuleSet, demands: &[Demand]) -> Opti
     })
 }
 
-fn threat_view(profile: &ThreatProfile) -> EnemyThreatView {
+fn threat_view(
+    profile: &ThreatProfile,
+    enemy: &EnemyInput,
+    input: &EngineInput,
+    ability: Option<&crate::rules::AbilityDamage>,
+) -> EnemyThreatView {
+    let durability = durability::estimate(
+        enemy.defenses.as_ref(),
+        &input.self_stats,
+        &input.self_abilities,
+        ability,
+    );
     EnemyThreatView {
         champion: profile.champion.clone(),
         archetype: profile.archetype,
         signals: profile.signals.clone(),
+        items: enemy.items.clone(),
+        durability,
     }
+}
+
+/// Builds abstract intel for every *known* item the enemy team owns (PROJECT_SPEC §6.3, Enemy Items
+/// panel). Pure & data-driven: branches only on the player's `DamageType`, the item's `IntentTag`s,
+/// and the `CounterCondition`s its granted `LiveSignal`s map to — never on a champion/item name.
+/// Items the rules don't know are omitted (the FE lists those from DDragon metadata, sans intel).
+fn enemy_item_intel(input: &EngineInput, rules: &RuleSet) -> Vec<ItemIntel> {
+    let player_damage = rules.champion(&input.self_champion).map(|c| c.damage_type);
+
+    // Collect distinct known item ids in first-seen order, with their owners (deduped per id).
+    let mut order: Vec<u32> = Vec::new();
+    let mut owners: std::collections::HashMap<u32, Vec<String>> = std::collections::HashMap::new();
+    for enemy in &input.enemies {
+        for &id in &enemy.items {
+            if rules.item(id).is_none() {
+                continue;
+            }
+            if !owners.contains_key(&id) {
+                order.push(id);
+            }
+            let list = owners.entry(id).or_default();
+            if !list.contains(&enemy.champion) {
+                list.push(enemy.champion.clone());
+            }
+        }
+    }
+
+    order
+        .into_iter()
+        .filter_map(|id| {
+            let item = rules.item(id)?;
+            let intents: Vec<IntentTag> = item
+                .intent_tags
+                .iter()
+                .copied()
+                .filter(|t| *t != IntentTag::Unknown)
+                .collect();
+            let (counters_you, counters_you_reason) = counters_player(&intents, player_damage);
+            let counter_hint = counter_hint(&item.grants_signals, rules);
+            Some(ItemIntel {
+                id,
+                name: item.name.clone(),
+                intents,
+                owners: owners.remove(&id).unwrap_or_default(),
+                counters_you,
+                counters_you_reason,
+                counter_hint,
+            })
+        })
+        .collect()
+}
+
+/// Whether (and why) an item blunts the player's own damage, from the item's defensive intent tags
+/// and the player's `DamageType`. Data-driven: pure mapping over abstract enums.
+fn counters_player(
+    intents: &[IntentTag],
+    player_damage: Option<DamageType>,
+) -> (bool, Option<String>) {
+    let resists_physical = intents.contains(&IntentTag::ArmorSelf);
+    let resists_magic =
+        intents.contains(&IntentTag::MrSelf) || intents.contains(&IntentTag::Spellshield);
+    let stasis = intents.contains(&IntentTag::StasisSurvival);
+
+    match player_damage {
+        Some(DamageType::Physical) if resists_physical => {
+            (true, Some("Reduces your physical damage.".into()))
+        }
+        Some(DamageType::Magic) if resists_magic => {
+            (true, Some("Reduces your magic damage.".into()))
+        }
+        Some(DamageType::Mixed) if resists_physical || resists_magic => {
+            (true, Some("Reduces your damage.".into()))
+        }
+        // True damage ignores resists; only stasis still matters. Unknown player damage is treated
+        // like a non-True attacker, so a stasis item still reads as a burst dodge.
+        Some(DamageType::True) if stasis => (true, Some("Can dodge your burst (stasis).".into())),
+        Some(DamageType::True) => (false, None),
+        _ if stasis => (true, Some("Can dodge your burst (stasis).".into())),
+        _ => (false, None),
+    }
+}
+
+/// The "answer with X" hint for an item, from the first of its granted signals that maps to a
+/// counter condition the rules actually have a rule for. Data-driven: signal → condition → action.
+fn counter_hint(grants_signals: &[LiveSignal], rules: &RuleSet) -> Option<String> {
+    grants_signals.iter().find_map(|&signal| {
+        let condition = match signal {
+            LiveSignal::HealthStacking => CounterCondition::HealthStacking,
+            LiveSignal::ArmorStacking => CounterCondition::ArmorStacking,
+            LiveSignal::MrStacking => CounterCondition::MrStacking,
+            LiveSignal::HasSustain => CounterCondition::HasSustain,
+            LiveSignal::Lethality => CounterCondition::Lethality,
+            _ => return None,
+        };
+        rules
+            .counter(condition)
+            .map(|_| format!("Answer with {}.", explain::counter_action(condition)))
+    })
 }

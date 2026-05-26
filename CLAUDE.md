@@ -72,6 +72,16 @@ Data flows **one direction**: sources → Rust core → typed Tauri events → R
 - Prefer subagents for isolated work: `rust-engine`, `ui-builder`, `code-reviewer`; use **Explore** for
   read-only API/library investigation to keep the main context clean.
 
+## Changelog & releases
+- **`CHANGELOG.md` is rendered in-app** (Settings → What's new) by a minimal renderer that only
+  understands `##` (version), `###` (section), and `- ` (bullet) lines — any other non-empty line
+  shows as a visible paragraph, so **never** put HTML comments or prose notes in the file.
+- **From v0.1.8 on, split each version entry into `###` sections** — at minimum **New features** and
+  **Fixes**, plus **Improvements** (or **Changed**) when relevant. Keep entries user-facing/plain.
+- Release flow is CI-driven (local builds can't sign): bump `package.json` + `src-tauri/tauri.conf.json`
+  + `src-tauri/Cargo.toml` (then `cargo update -p draftsmith`), commit, tag `vX.Y.Z`, push → `release.yml`
+  builds the signed installer + `latest.json` as a **draft**; the owner publishes it.
+
 ## Gotchas
 - Live Client **refuses connection outside a game** — that is the "no game" state, not an error to surface loudly.
 - Live Client `/activeplayer` gold is limited; gold is partly inferred (PROJECT_SPEC.md §6.4).

@@ -411,6 +411,11 @@ mod tests {
                     total_cost: 0,
                     tags: tags.iter().map(|t| t.to_string()).collect(),
                     image: format!("{id}.png"),
+                    plaintext: String::new(),
+                    description: String::new(),
+                    flat_hp: 0.0,
+                    flat_armor: 0.0,
+                    flat_mr: 0.0,
                 },
             );
         }

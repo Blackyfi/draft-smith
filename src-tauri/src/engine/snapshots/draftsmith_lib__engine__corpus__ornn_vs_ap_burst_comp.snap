@@ -45,24 +45,89 @@ threats:
     signals:
       - fed
       - hard-cc
+    items:
+      - 6655
+    durability: ~
   - champion: Brand
     archetype: battlemage
     signals:
       - hard-cc
+    items:
+      - 6653
+    durability: ~
   - champion: Annie
     archetype: burst-mage
     signals:
       - hard-cc
+    items:
+      - 3157
+    durability: ~
   - champion: Veigar
     archetype: burst-mage
     signals:
       - fed
       - hard-cc
+    items:
+      - 3089
+    durability: ~
   - champion: Ahri
     archetype: burst-mage
     signals:
       - fed
       - mobility
+    items:
+      - 3135
+    durability: ~
+enemyItems:
+  - id: 6655
+    name: "Luden's Companion"
+    intents:
+      - burst_amp
+      - ability_haste
+    owners:
+      - Syndra
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 6653
+    name: "Liandry's Torment"
+    intents:
+      - percent_hp_damage
+      - burst_amp
+    owners:
+      - Brand
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 3157
+    name: "Zhonya's Hourglass"
+    intents:
+      - stasis_survival
+      - armor_self
+      - burst_amp
+    owners:
+      - Annie
+    countersYou: true
+    countersYouReason: Can dodge your burst (stasis).
+    counterHint: ~
+  - id: 3089
+    name: "Rabadon's Deathcap"
+    intents:
+      - burst_amp
+    owners:
+      - Veigar
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 3135
+    name: Void Staff
+    intents:
+      - magic_pen_percent
+    owners:
+      - Ahri
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
 focus:
   - champion: Syndra
     priority: primary

@@ -4,6 +4,7 @@ import type {
   ChampionMeta,
   ConnectionStatus,
   DdragonStatus,
+  ItemMeta,
   MetaBuild,
   Recommendation,
   Settings,
@@ -93,6 +94,12 @@ export const api = {
    */
   getMetaBuild: (champion: string, role: string | null, rank: string) =>
     invoke<MetaBuild | null>("get_meta_build", { champion, role, rank }),
+
+  /**
+   * Returns DDragon metadata for an item by numeric id, including name, cost, tags, plaintext, and
+   * stripped description. Returns `null` when DDragon data hasn't loaded or the item is unknown.
+   */
+  getItemMeta: (id: number) => invoke<ItemMeta | null>("get_item_meta", { id }),
 };
 
 /**

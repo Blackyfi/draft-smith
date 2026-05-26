@@ -262,6 +262,54 @@ export function SettingsDialog() {
             />
           </div>
 
+          {/* Jungle gank alerts */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="grid gap-0.5">
+              <Label htmlFor="gank-alerts-switch">Jungle gank alerts</Label>
+              <p className="text-[11px] text-muted-foreground">
+                A brief on-screen warning when the enemy jungler&apos;s gank
+                window opens.
+              </p>
+            </div>
+            <Switch
+              id="gank-alerts-switch"
+              checked={settings.gankAlertsEnabled}
+              onCheckedChange={(checked) =>
+                update({ gankAlertsEnabled: checked })
+              }
+              aria-label="Toggle jungle gank alerts"
+            />
+          </div>
+
+          {/* Gank alert sound — disabled when alerts are off */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="grid gap-0.5">
+              <Label
+                htmlFor="gank-sound-switch"
+                className={
+                  !settings.gankAlertsEnabled ? "opacity-40" : undefined
+                }
+              >
+                Alert sound
+              </Label>
+              <p
+                className={cn(
+                  "text-[11px] text-muted-foreground",
+                  !settings.gankAlertsEnabled && "opacity-40",
+                )}
+              >
+                Play a short audio cue with each gank alert.
+              </p>
+            </div>
+            <Switch
+              id="gank-sound-switch"
+              checked={settings.gankAlertSound}
+              onCheckedChange={(checked) => update({ gankAlertSound: checked })}
+              disabled={!settings.gankAlertsEnabled}
+              aria-label="Toggle gank alert sound"
+            />
+          </div>
+
           {/* Meta panel — rank selector */}
           <div className="grid gap-1.5">
             <Label htmlFor="meta-rank-select">Meta build rank</Label>

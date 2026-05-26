@@ -2,6 +2,29 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.8
+
+### New features
+- **Enemy items, explained** — a new third column lists every item the enemy team has bought, with
+  what each one does (from the game's own item text), quick "type" tags (Tank, Anti-heal, Lethality,
+  …), a flag when an item is built to blunt *your* damage, and a hint for how to answer it. Each
+  enemy on the threat board now also shows their item icons, so you can spot an unfamiliar item and
+  look it up on the right.
+- **Kill-threat read on every enemy** — each enemy now shows an at-a-glance survivability gauge
+  versus your damage, plus an estimated "≈N× <your spell>" count of how many casts of your main nuke
+  it takes to kill them from full health (for supported champions). It folds in their champion,
+  level, and items. It's an estimate — it can't see enemy runes or their current health.
+- **Jungle gank alerts** — a big, bright pop-up (with a sound) warns you when the enemy jungler's
+  gank window opens: an early-gank warning timed to their champion's clear style, and a heads-up when
+  they hit level 6 and their ultimate is online. Turn the alert or its sound off in Settings.
+
+### Improvements
+- **Wider, three-column in-game layout** — the in-game page now uses three columns on wide windows
+  (build · threats · enemy items) and still collapses to a single column on narrow/overlay windows.
+
+### Fixes
+- The "Next" tag on your next item to buy is no longer partly hidden behind the item icon.
+
 ## 0.1.7
 
 - **Full Meta core build** — the Meta panel's "Core build" now shows a complete 5–6 item sequence

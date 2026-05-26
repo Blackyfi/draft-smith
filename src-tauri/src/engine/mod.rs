@@ -14,6 +14,7 @@
 
 pub mod aggregate;
 pub mod classify;
+pub mod durability;
 pub mod explain;
 pub mod focus;
 pub mod input;

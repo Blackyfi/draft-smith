@@ -147,6 +147,32 @@ pub struct SwapSuggestion {
     pub reason: String,
 }
 
+/// What resist applies to the player's damage against this enemy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ResistKind {
+    Armor,
+    Magic,
+    None,
+}
+
+/// Estimated enemy survivability vs the player (PROJECT_SPEC advisory; an at-a-glance ESTIMATE,
+/// excludes enemy runes/current-HP). Mirrors `Durability` in `src/types.ts`. All HP/resist values
+/// are rounded for display.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Durability {
+    pub effective_hp: u32,
+    pub raw_hp: u32,
+    pub resist: u32,
+    pub resist_after_pen: u32,
+    pub resist_kind: ResistKind,
+    pub casts_to_kill: Option<u32>,
+    pub ability_slot: Option<AbilitySlot>,
+    pub ability_name: Option<String>,
+    pub per_cast_damage: Option<u32>,
+}
+
 /// A per-enemy view for the threat board (PROJECT_SPEC §6.3): the *why* behind the build, surfaced.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,6 +180,33 @@ pub struct EnemyThreatView {
     pub champion: String,
     pub archetype: Archetype,
     pub signals: Vec<LiveSignal>,
+    /// The owned item ids, in Live Client slot order (display data for the threat board).
+    pub items: Vec<u32>,
+    /// Estimated durability vs the player + casts-to-kill, when DDragon defenses are resolved;
+    /// `None` when defenses are unavailable (e.g. the snapshot corpus injects none).
+    pub durability: Option<Durability>,
+}
+
+/// Abstract intel about one distinct enemy item for the Enemy Items reference panel.
+/// Pure & data-driven: `intents` are the item's rule tags; `counters_you` is derived from the
+/// player's damage type vs the item's defensive intents; `counter_hint` from the item's granted
+/// signals → counter rules. Items the rules don't know are omitted (the FE lists those from
+/// DDragon metadata, without intel). Mirrors `ItemIntel` in `src/types.ts`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemIntel {
+    pub id: u32,
+    pub name: String,
+    /// The item's intent tags (the "type" pills); `IntentTag::Unknown` filtered out.
+    pub intents: Vec<IntentTag>,
+    /// Live Client ids of the enemies that own this item (first-seen order, de-duplicated).
+    pub owners: Vec<String>,
+    /// True when this item blunts the player's own damage (built against you).
+    pub counters_you: bool,
+    /// Why it's built against you, when `counters_you` (e.g. "Reduces your magic damage.").
+    pub counters_you_reason: Option<String>,
+    /// What to build to answer this item, when the rules know one (e.g. "Answer with anti-heal (Grievous Wounds)."), else None.
+    pub counter_hint: Option<String>,
 }
 
 /// How urgently a focus target should be prioritized in fights (PROJECT_SPEC §5.2 — advisory).
@@ -189,6 +242,8 @@ pub struct Recommendation {
     pub build_path: Vec<BuildStep>,
     pub swaps: Vec<SwapSuggestion>,
     pub threats: Vec<EnemyThreatView>,
+    /// Distinct known enemy items with abstract intel, for the Enemy Items reference panel.
+    pub enemy_items: Vec<ItemIntel>,
     /// Who to prioritize in fights (1–2 targets), framed for the player's archetype.
     pub focus: Vec<FocusTarget>,
     /// Which ability to level next (skill-order coach), or `None` when DDragon/live data is

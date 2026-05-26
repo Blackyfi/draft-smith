@@ -92,6 +92,7 @@ pub fn run() {
             commands::get_champion_meta,
             commands::get_meta_build,
             commands::get_item_icon,
+            commands::get_item_meta,
             commands::get_champion_icon,
             commands::get_champion_icon_by_name,
             commands::get_champion_display_name,

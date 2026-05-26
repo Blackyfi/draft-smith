@@ -81,13 +81,26 @@ const REC_A: Recommendation = {
     },
   ],
   threats: [
-    { champion: "Zed", archetype: "assassin", signals: ["lethality"] },
-    { champion: "Darius", archetype: "juggernaut", signals: ["has-sustain"] },
-    { champion: "Vi", archetype: "bruiser", signals: [] },
+    {
+      champion: "Zed",
+      archetype: "assassin",
+      signals: ["lethality"],
+      items: [],
+      durability: null,
+    },
+    {
+      champion: "Darius",
+      archetype: "juggernaut",
+      signals: ["has-sustain"],
+      items: [],
+      durability: null,
+    },
+    { champion: "Vi", archetype: "bruiser", signals: [], items: [], durability: null },
   ],
   focus: [],
   skill: null,
   abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
+  enemyItems: [],
 };
 
 // Vi reveals magic-resist stacking → Void Staff is promoted to the next purchase.
@@ -102,7 +115,13 @@ const REC_B: Recommendation = {
   threats: [
     REC_A.threats[0],
     REC_A.threats[1],
-    { champion: "Vi", archetype: "bruiser", signals: ["mr-stacking"] },
+    {
+      champion: "Vi",
+      archetype: "bruiser",
+      signals: ["mr-stacking"],
+      items: [],
+      durability: null,
+    },
   ],
 };
 
@@ -135,6 +154,7 @@ describe("FE↔Rust live loop", () => {
     tauri.invokeHandlers["get_current_recommendation"] = () => REC_A;
     tauri.invokeHandlers["get_champion_icon_by_name"] = () => null;
     tauri.invokeHandlers["get_item_icon"] = () => null;
+    tauri.invokeHandlers["get_item_meta"] = () => null;
     tauri.invokeHandlers["get_ddragon_version"] = () => "16.10.1";
     tauri.invokeHandlers["get_champion_display_name"] = (args) =>
       (args as { name: string }).name;
@@ -152,6 +172,8 @@ describe("FE↔Rust live loop", () => {
       },
       metaRank: "diamond_plus",
       showMetaPanel: true,
+      gankAlertsEnabled: true,
+      gankAlertSound: true,
     });
     tauri.invokeHandlers["get_app_version"] = () => "0.1.3";
     tauri.invokeHandlers["check_for_update"] = () => null;

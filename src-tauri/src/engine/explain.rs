@@ -23,6 +23,24 @@ pub fn condition_phrase(condition: CounterCondition) -> &'static str {
     }
 }
 
+/// The player-facing build action that answers a condition — used by the Enemy Items panel's
+/// `counter_hint` (e.g. "Answer with anti-heal (Grievous Wounds)."). Pure: maps an abstract
+/// condition to a phrase, never a champion/item name.
+pub fn counter_action(condition: CounterCondition) -> &'static str {
+    match condition {
+        CounterCondition::HasSustain => "anti-heal (Grievous Wounds)",
+        CounterCondition::HealthStacking => "%max-HP damage",
+        CounterCondition::ArmorStacking => "armor penetration",
+        CounterCondition::MrStacking => "magic penetration",
+        CounterCondition::Lethality => "armor or a stasis item",
+        CounterCondition::FedAssassin => "a stasis item / spellshield",
+        CounterCondition::PhysicalHeavy => "armor",
+        CounterCondition::MagicHeavy => "magic resist",
+        CounterCondition::HardCc => "tenacity / QSS",
+        CounterCondition::Mobility => "move speed",
+    }
+}
+
 /// Joins enemy names into an English clause: "Zed", "Zed and Darius", "Zed, Darius and Vi".
 /// Caps the list at three names (+"others") so a whole-team condition stays readable.
 pub fn join_enemies(enemies: &[String]) -> String {
@@ -89,6 +107,30 @@ mod tests {
         assert_eq!(
             join_enemies(&["A".into(), "B".into(), "C".into(), "D".into()]),
             "A, B and 2 others"
+        );
+    }
+
+    #[test]
+    fn counter_action_maps_conditions_to_build_actions() {
+        assert_eq!(
+            counter_action(CounterCondition::HasSustain),
+            "anti-heal (Grievous Wounds)"
+        );
+        assert_eq!(
+            counter_action(CounterCondition::HealthStacking),
+            "%max-HP damage"
+        );
+        assert_eq!(
+            counter_action(CounterCondition::ArmorStacking),
+            "armor penetration"
+        );
+        assert_eq!(
+            counter_action(CounterCondition::MrStacking),
+            "magic penetration"
+        );
+        assert_eq!(
+            counter_action(CounterCondition::Lethality),
+            "armor or a stasis item"
         );
     }
 

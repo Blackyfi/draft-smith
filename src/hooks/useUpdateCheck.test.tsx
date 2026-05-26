@@ -52,6 +52,8 @@ const DEFAULT_SETTINGS: Settings = {
   },
   metaRank: "diamond_plus",
   showMetaPanel: true,
+  gankAlertsEnabled: true,
+  gankAlertSound: true,
 };
 
 const UPDATE_AVAILABLE: UpdateInfo = {

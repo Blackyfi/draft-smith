@@ -23,6 +23,31 @@ pub struct EngineInput {
     pub self_level: u32,
     /// The player's current ability ranks + names, for the skill-order coach.
     pub self_abilities: SelfAbilities,
+    /// The player's live offensive stats, for the durability / casts-to-kill estimator.
+    pub self_stats: SelfDamageStats,
+}
+
+/// The active player's offensive stats the durability estimator reasons over — abstract numbers,
+/// no champion identity. The `*_percent` pen values are fractions in `0.0..=1.0`; flat pen already
+/// includes lethality-derived armor pen (mirrors the Live Client `championStats`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SelfDamageStats {
+    pub ability_power: f32,
+    pub attack_damage: f32,
+    pub magic_pen_flat: f32,
+    pub magic_pen_percent: f32,
+    pub armor_pen_flat: f32,
+    pub armor_pen_percent: f32,
+}
+
+/// One enemy's resolved defensive stats at their current level + items, injected by the poller from
+/// DDragon (the pure engine has no DDragon access). An at-a-glance estimate: excludes the enemy's
+/// runes, current HP, and level passives, which no Riot-sanctioned source exposes.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ResolvedDefenses {
+    pub hp: f32,
+    pub armor: f32,
+    pub mr: f32,
 }
 
 /// The active player's four ability slots (rank + display name), in canonical order.
@@ -52,6 +77,9 @@ pub struct EnemyInput {
     pub kills: u32,
     pub deaths: u32,
     pub assists: u32,
+    /// Resolved defensive stats (HP/armor/MR) at this enemy's level + items, injected by the poller
+    /// from DDragon. `None` until resolved — `from_all_game_data` leaves it `None`.
+    pub defenses: Option<ResolvedDefenses>,
 }
 
 impl EngineInput {
@@ -78,6 +106,9 @@ impl EngineInput {
                 kills: p.scores.kills,
                 deaths: p.scores.deaths,
                 assists: p.scores.assists,
+                // The poller resolves defenses from DDragon and injects them on recompute; the pure
+                // adapter has no DDragon access, so it leaves them unresolved here.
+                defenses: None,
             })
             .collect();
 
@@ -109,6 +140,17 @@ impl EngineInput {
                 e: ability_state(|ab| &ab.e),
                 r: ability_state(|ab| &ab.r),
             },
+            self_stats: active.map_or_else(SelfDamageStats::default, |a| {
+                let s = &a.champion_stats;
+                SelfDamageStats {
+                    ability_power: s.ability_power,
+                    attack_damage: s.attack_damage,
+                    magic_pen_flat: s.magic_penetration_flat,
+                    magic_pen_percent: s.magic_penetration_percent,
+                    armor_pen_flat: s.armor_penetration_flat,
+                    armor_pen_percent: s.armor_penetration_percent,
+                }
+            }),
         })
     }
 }

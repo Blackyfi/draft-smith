@@ -1,4 +1,5 @@
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { GankAlertOverlay } from "@/components/gank/GankAlertOverlay";
 import { Dashboard } from "@/components/Dashboard";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -7,6 +8,7 @@ import { ErrorState } from "@/components/states/ErrorState";
 import { NoGame } from "@/components/states/NoGame";
 import { useBuildShiftToasts } from "@/hooks/useBuildShiftToasts";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
+import { useGankAlert } from "@/hooks/useGankAlert";
 import { useRecommendation } from "@/hooks/useRecommendation";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 import { useThemeSync } from "@/hooks/useThemeSync";
@@ -27,6 +29,8 @@ function App() {
   // Open the settings dialog when the tray "Settings" entry fires.
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   useTauriEvent("open-settings", () => setSettingsOpen(true));
+  // Jungle gank window alert — mounted once, app-wide.
+  const { alert: gankAlert, dismiss: dismissGankAlert } = useGankAlert();
 
   // While the first status resolves, present it as "Connecting…" (a real, labeled state) rather
   // than an ambiguous placeholder.
@@ -47,6 +51,9 @@ function App() {
       </main>
       <Footer />
       <SettingsDialog />
+      {/* Gank alert overlay — fixed, full-window, high-z. Rendered outside the scroll container
+          so it always floats above the content regardless of scroll position. */}
+      <GankAlertOverlay alert={gankAlert} onDismiss={dismissGankAlert} />
     </div>
   );
 }

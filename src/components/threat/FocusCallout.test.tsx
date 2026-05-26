@@ -35,6 +35,7 @@ const BASE_REC: Recommendation = {
   focus: [],
   skill: null,
   abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
+  enemyItems: [],
 };
 
 const REC_WITH_FOCUS: Recommendation = {

@@ -42,15 +42,23 @@ threats:
       - fed
       - has-sustain
       - hard-cc
+    items:
+      - 6630
+    durability: ~
   - champion: Vladimir
     archetype: battlemage
     signals:
       - fed
       - has-sustain
       - mr-stacking
+    items:
+      - 3065
+    durability: ~
   - champion: Soraka
     archetype: enchanter
     signals: []
+    items: []
+    durability: ~
   - champion: Warwick
     archetype: bruiser
     signals:
@@ -58,11 +66,50 @@ threats:
       - has-sustain
       - hard-cc
       - mobility
+    items:
+      - 3072
+    durability: ~
   - champion: Darius
     archetype: juggernaut
     signals:
       - has-sustain
       - hard-cc
+    items:
+      - 6630
+    durability: ~
+enemyItems:
+  - id: 6630
+    name: Goredrinker
+    intents:
+      - omnivamp
+      - sustain
+    owners:
+      - Aatrox
+      - Darius
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with anti-heal (Grievous Wounds).
+  - id: 3065
+    name: Spirit Visage
+    intents:
+      - mr_self
+      - sustain
+      - health_self
+    owners:
+      - Vladimir
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with magic penetration.
+  - id: 3072
+    name: Bloodthirster
+    intents:
+      - lifesteal
+      - spellshield
+    owners:
+      - Warwick
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with anti-heal (Grievous Wounds).
 focus:
   - champion: Vladimir
     priority: primary
