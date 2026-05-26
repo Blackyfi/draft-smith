@@ -61,6 +61,25 @@ pub enum KeyLayout {
     Custom,
 }
 
+/// In-game movement scheme, which changes how the Q/W ability slots are pressed.
+///
+/// - `Mouse` (default): classic right-click-to-move. Abilities are cast with the [`KeyLayout`]
+///   letters (Q W E R / A Z E R / custom).
+/// - `Keyboard`: League's "Keyboard (WASD) Input" mode. Movement is on W A S D, so the **Q ability
+///   moves to the right mouse button** and the **W ability moves to Left Shift**; E and R stay on
+///   their layout keys (the same physical keys, including on AZERTY). The display reflects this.
+///
+/// This is a pure display choice — the Live Client never exposes the player's control scheme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum MovementMode {
+    /// Right-click to move; abilities on the layout letters (default).
+    #[default]
+    Mouse,
+    /// Keyboard (WASD) movement; Q → right-click, W → Left Shift, E/R unchanged.
+    Keyboard,
+}
+
 /// How ability slots (Q/W/E/R) are labeled in the UI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,6 +87,10 @@ pub struct AbilityKeys {
     pub layout: KeyLayout,
     /// Display letters for slots `[Q, W, E, R]`, used only when `layout == Custom`.
     pub custom: [String; 4],
+    /// In-game movement scheme; remaps the Q/W slot labels in `Keyboard` (WASD) mode. Defaults to
+    /// `Mouse` so a `settings.json` written before this field existed still loads.
+    #[serde(default)]
+    pub movement_mode: MovementMode,
 }
 
 impl Default for AbilityKeys {
@@ -75,6 +98,7 @@ impl Default for AbilityKeys {
         Self {
             layout: KeyLayout::Qwerty,
             custom: ["Q".into(), "W".into(), "E".into(), "R".into()],
+            movement_mode: MovementMode::Mouse,
         }
     }
 }
@@ -207,6 +231,25 @@ mod tests {
         assert!(json.contains("\"showMetaPanel\":true"));
         let back: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(s, back);
+    }
+
+    #[test]
+    fn ability_keys_default_to_mouse_movement() {
+        // A settings.json (or abilityKeys blob) written before movementMode existed must still
+        // load, defaulting to classic right-click-to-move so Q/W labels stay on the layout letters.
+        let legacy = r#"{"layout":"qwerty","custom":["Q","W","E","R"]}"#;
+        let keys: AbilityKeys = serde_json::from_str(legacy).unwrap();
+        assert_eq!(keys.movement_mode, MovementMode::Mouse);
+
+        // And it round-trips on the kebab-case wire format the FE expects.
+        let json = serde_json::to_string(&AbilityKeys::default()).unwrap();
+        assert!(json.contains("\"movementMode\":\"mouse\""));
+        let keyboard = AbilityKeys {
+            movement_mode: MovementMode::Keyboard,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&keyboard).unwrap();
+        assert!(json.contains("\"movementMode\":\"keyboard\""));
     }
 
     #[test]

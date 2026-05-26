@@ -1,6 +1,5 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 119
 expression: rec
 ---
 selfChampion: Ornn
@@ -72,3 +71,8 @@ focus:
     priority: secondary
     reason: "Lock down Veigar for your team — they're fed and snowballing."
 skill: ~
+abilityRanks:
+  q: 0
+  w: 0
+  e: 0
+  r: 0

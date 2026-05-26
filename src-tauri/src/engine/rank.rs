@@ -11,7 +11,9 @@ use crate::engine::explain;
 use crate::engine::focus::focus_targets;
 use crate::engine::input::EngineInput;
 use crate::engine::skill::recommend_skill;
-use crate::model::{BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, ThreatProfile};
+use crate::model::{
+    AbilityRanks, BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, ThreatProfile,
+};
 use crate::rules::{CounterRule, RuleSet};
 
 /// Total items in the recommended path (anchors + boots + situational), I1→I6.
@@ -65,6 +67,15 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         .skill_plan(&input.self_champion)
         .and_then(|plan| recommend_skill(input.self_level, &input.self_abilities, plan));
 
+    // The player's live ability ranks, surfaced so the UI can light up skill-order progress. This
+    // is plain display data (no engine branching on it), available even for unauthored champions.
+    let ability_ranks = AbilityRanks {
+        q: input.self_abilities.q.rank,
+        w: input.self_abilities.w.rank,
+        e: input.self_abilities.e.rank,
+        r: input.self_abilities.r.rank,
+    };
+
     let Some(graph) = rules
         .champion(&input.self_champion)
         .and_then(|c| c.build_graph.as_ref())
@@ -76,6 +87,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
             threats,
             focus,
             skill,
+            ability_ranks,
         };
     };
 
@@ -134,6 +146,7 @@ pub fn recommend(input: &EngineInput, rules: &RuleSet) -> Recommendation {
         threats,
         focus,
         skill,
+        ability_ranks,
     }
 }
 

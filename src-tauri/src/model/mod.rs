@@ -17,7 +17,8 @@ pub mod status;
 pub use champion::ChampionMeta;
 pub use ddragon::DdragonStatus;
 pub use engine::{
-    BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, TeamThreat, ThreatProfile,
+    AbilityRanks, BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, TeamThreat,
+    ThreatProfile,
 };
 // `FocusPriority`/`FocusTarget` are part of the typed FE↔Rust contract (carried inside
 // `Recommendation`, mirrored in `src/types.ts`); the engine references them via

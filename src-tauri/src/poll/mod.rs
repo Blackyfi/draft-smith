@@ -386,6 +386,7 @@ mod tests {
             threats: Vec::new(),
             focus: Vec::new(),
             skill: None,
+            ability_ranks: Default::default(),
         });
         let mut sig = Some(StateSignature::from_data(&parse(FIXTURE)));
 

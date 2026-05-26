@@ -1,6 +1,5 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 96
 expression: rec
 ---
 selfChampion: Sett
@@ -72,3 +71,8 @@ focus:
     priority: secondary
     reason: "Pressure and dive Soraka — a squishy, high-value target."
 skill: ~
+abilityRanks:
+  q: 0
+  w: 0
+  e: 0
+  r: 0

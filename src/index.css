@@ -73,8 +73,9 @@
 }
 
 @theme inline {
-  /* Shared max width of the centered content column (header / main / footer stay aligned). */
-  --container-app: 30rem;
+  /* Shared max width of the centered content column (header / main / footer stay aligned).
+     Wide enough for the in-game two-column dashboard (build content | awareness content). */
+  --container-app: 52rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

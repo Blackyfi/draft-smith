@@ -18,8 +18,11 @@ import type { Rank, Recommendation } from "@/types";
  * recommendation exists but no enemy has revealed an item-derived signal, we surface the early
  * "watching enemy buys" hint (PROJECT_SPEC §6.4, in-game-early).
  *
- * The Meta panel sits beside the Adapt ("Build next") panel when `settings.showMetaPanel` is true.
- * On narrow widths the two panels stack vertically; on wider widths they sit side by side.
+ * Layout (PROJECT_SPEC §6.3): two columns on wider windows so the app grows horizontally instead
+ * of getting ever taller. The **left** column holds the build-decision content (skill order, the
+ * Adapt build path, and the Meta panel); the **right** column holds the situational/awareness
+ * content (who to focus, the enemy threat board, situational swaps). Below `md` it collapses to a
+ * single stacked column so the compact overlay / minimum-width window still works.
  */
 export function Dashboard({
   recommendation,
@@ -38,34 +41,32 @@ export function Dashboard({
   const metaRank: Rank = settings?.metaRank ?? "diamond_plus";
 
   return (
-    <div className="flex flex-col gap-5 p-3">
-      <SkillStrip />
-
-      {/* Adapt + Meta panels side by side (stack on narrow). */}
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-4">
-        {/* Adapt panel — existing build-next, takes available space. */}
-        <div className="flex-1 min-w-0">
-          <BuildNext buildPath={recommendation.buildPath} />
-        </div>
-
-        {/* Meta panel — only when enabled in settings and we have a champion. */}
+    <div className="grid grid-cols-1 items-start gap-5 p-3 md:grid-cols-2">
+      {/* Left column — what to build. */}
+      <div className="flex min-w-0 flex-col gap-5">
+        <SkillStrip />
+        <BuildNext buildPath={recommendation.buildPath} />
         {showMeta && (
-          <div className="flex-1 min-w-0">
-            <MetaPanel champion={recommendation.selfChampion} rank={metaRank} />
-          </div>
+          <MetaPanel
+            champion={recommendation.selfChampion}
+            rank={metaRank}
+            abilityRanks={recommendation.abilityRanks}
+          />
+        )}
+        {noSignalsYet && (
+          <p className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground">
+            <Eye className="size-3.5 shrink-0" aria-hidden="true" />
+            Core build — watching enemy buys to adapt.
+          </p>
         )}
       </div>
 
-      {noSignalsYet && (
-        <p className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground">
-          <Eye className="size-3.5 shrink-0" aria-hidden="true" />
-          Core build — watching enemy buys to adapt.
-        </p>
-      )}
-
-      <FocusCallout />
-      <EnemyThreatBoard threats={recommendation.threats} />
-      <SwapStrip swaps={recommendation.swaps} />
+      {/* Right column — who to fight. */}
+      <div className="flex min-w-0 flex-col gap-5">
+        <FocusCallout />
+        <EnemyThreatBoard threats={recommendation.threats} />
+        <SwapStrip swaps={recommendation.swaps} />
+      </div>
     </div>
   );
 }

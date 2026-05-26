@@ -5,12 +5,14 @@
 // to this origin). Run it, then `npm run tauri dev`, and watch the build re-rank live.
 //
 // It does NOT touch production code: the app talks to it precisely because :2999 is the real Live
-// Client origin. It starts the board from a *fresh game* — every player stripped to empty items at
-// ~0:30 — so you see the opening, from-scratch recommendation first, then walks a scripted timeline
-// that feeds the captured builds back in and layers on extra purchases. Each step introduces a *new*
-// threat signal the engine reacts to (→ a recommendation update and a build-shift toast). The game
-// clock advances on every response, while the roster/items stay put between steps — which also
-// exercises the poller's diff (clock drift must NOT trigger a recompute).
+// Client origin. It starts the board from a *fresh game* at ~0:15 — every player stripped to empty
+// items, the scoreboard wiped to 0/0/0, the active player back at level 1 — so you see the true
+// opening, from-scratch recommendation first (no builds, nobody "fed"). It then walks a scripted
+// timeline that feeds the captured builds back in, ramps a couple of enemies' KDA up to "fed", and
+// layers on extra purchases. Each step introduces a *new* threat signal the engine reacts to (→ a
+// recommendation update and a build-shift toast). The game clock advances on every response, while
+// the roster/items stay put between steps — which also exercises the poller's diff (clock drift
+// must NOT trigger a recompute).
 //
 // Usage:  node scripts/mock-live-server.mjs   (or `npm run mock`)
 
@@ -45,13 +47,18 @@ const state = structuredClone(baseData);
 // stash each player's captured loadout, then strip the board bare and feed those items back in over
 // the timeline. Now the app shows the from-scratch recommendation first, then re-ranks as the lobby
 // fills in its builds.
-const FRESH_START_GAMETIME = 30; // ~0:30 — laning just started; nobody has recalled to shop yet.
+const FRESH_START_GAMETIME = 15; // ~0:15 — minions haven't even met; truly the opening seconds.
 const capturedLoadouts = state.allPlayers.map((p) => ({
   championName: p.championName,
   items: p.items,
 }));
 state.allPlayers.forEach((p) => {
   p.items = [];
+  // Fresh game: nobody has farmed or fought yet, so the scoreboard starts clean. The captured
+  // fixture is a mid-game snapshot already snowballed (Zed 4/2, Darius 3/1); without wiping it,
+  // both would read as "Fed" from the opening whistle. KDA is ramped back up over the Act 2
+  // timeline so you can watch the Fed pills (and the resulting build/focus shift) appear live.
+  p.scores = { kills: 0, deaths: 0, assists: 0, creepScore: 0, wardScore: 0 };
 });
 state.gameData.gameTime = FRESH_START_GAMETIME;
 
@@ -134,6 +141,20 @@ function buy(championName, itemID, displayName) {
   console.log(`  ${championName} bought ${displayName} (${itemID})`);
 }
 
+// ---------- Bumps a champion's scoreline by the given deltas (drives the "Fed" signal). ----
+// NOTE: the poller's diff signature is built from items/level/abilities — not KDA — so a scoreline
+// change alone won't trigger a recompute. Each call here is paired with an item purchase in the same
+// timeline step so the engine re-reads the (now snowballed) scores and the Fed pill updates live.
+function score(championName, { kills = 0, deaths = 0, assists = 0 } = {}) {
+  const player = state.allPlayers.find((p) => p.championName === championName);
+  if (!player) return;
+  player.scores.kills += kills;
+  player.scores.deaths += deaths;
+  player.scores.assists += assists;
+  const s = player.scores;
+  console.log(`  ${championName} scoreline → ${s.kills}/${s.deaths}/${s.assists}`);
+}
+
 // The demo runs in two acts. Act 1 ("lane → mid game") feeds each player's captured fixture loadout
 // back in, one item-slot at a time across the whole lobby, so first items land before second items —
 // roughly how a real game paces out. Act 2 ("escalation") then layers on extra purchases, each adding
@@ -151,14 +172,32 @@ for (let slot = 0; slot < maxSlots; slot += 1) {
   }
 }
 
-// Act 2 — extra enemy purchases; each adds a signal the team wasn't projecting yet, so the Ahri
-// recommendation shifts (more penetration / antiheal / stasis) and a toast fires.
+// Act 2 — escalation. Extra enemy purchases each add a signal the team wasn't projecting yet, and a
+// couple of steps also ramp Zed's and Darius's KDA so they cross the engine's "fed" threshold
+// (`kills >= 6 || (kills >= 3 && K/D >= 2.0)`) mid-demo. So the Ahri recommendation shifts (more
+// penetration / antiheal / stasis), the Fed pills light up, and a build-shift toast fires.
 const escalationSteps = [
-  () => buy("Darius", 3053, "Sterak's Gage"), //   → health-stacking (frontline bulk)
-  () => buy("Vi", 3065, "Spirit Visage"), //        → mr-stacking + has-sustain
-  () => buy("Kaisa", 3072, "Bloodthirster"), //     → has-sustain (healing across the team)
-  () => buy("Leona", 3068, "Sunfire Aegis"), //     → health + armor stacking
-  () => buy("Zed", 3814, "Edge of Night"), //       → reinforces lethality (and a spellshield)
+  // Zed gets first blood and an early pickup (2/0) — threatening, but not yet "fed" (needs 3 kills).
+  () => {
+    buy("Zed", 3814, "Edge of Night"); //            → reinforces lethality (and a spellshield)
+    score("Zed", { kills: 2, assists: 1 });
+  },
+  // Darius wins a lane trade (1/0) and starts stacking bulk.
+  () => {
+    buy("Darius", 3053, "Sterak's Gage"); //          → health-stacking (frontline bulk)
+    score("Darius", { kills: 1 });
+  },
+  // Zed snowballs to 3/0 → crosses the fed threshold (Fed pill + focus shift + toast).
+  () => {
+    buy("Vi", 3065, "Spirit Visage"); //              → mr-stacking + has-sustain
+    score("Zed", { kills: 1 });
+  },
+  // Darius reaches 3/1 → also fed; team healing grows.
+  () => {
+    buy("Kaisa", 3072, "Bloodthirster"); //           → has-sustain (healing across the team)
+    score("Darius", { kills: 2, deaths: 1 });
+  },
+  () => buy("Leona", 3068, "Sunfire Aegis"), //       → health + armor stacking
 ];
 
 const TIMELINE = [...baseBuildSteps, ...escalationSteps];
@@ -221,7 +260,8 @@ server.listen(PORT, HOST, () => {
     `Mock Live Client serving the Ahri fixture at https://${HOST}:${PORT}/liveclientdata/allgamedata`,
   );
   console.log(
-    `Starting from a fresh game (empty builds) and walking the purchase timeline every ` +
-      `${STEP_INTERVAL_MS / 1000}s. Start the app with \`npm run tauri dev\`. Ctrl+C to stop.`,
+    `Starting from a brand-new game at 0:15 (empty builds, clean 0/0/0 scoreboard, level 1) and ` +
+      `walking the timeline every ${STEP_INTERVAL_MS / 1000}s — builds fill in, then Zed & Darius ` +
+      `snowball to "fed". Start the app with \`npm run tauri dev\`. Ctrl+C to stop.`,
   );
 });
