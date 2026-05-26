@@ -2,6 +2,22 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.7
+
+- **Full Meta core build** — the Meta panel's "Core build" now shows a complete 5–6 item sequence
+  instead of just the first three. The most-popular follow-up for each later slot is folded into the
+  build path, and the situational list shows the remaining alternatives (no more duplicates).
+- **Skill order follows your keys** — the Meta panel's skill order now respects your keyboard
+  settings: AZERTY shows A/Z/E/R, and Keyboard (WASD/ZQSD) movement shows your Q on right-click (RMB)
+  and W on Shift — matching what you actually press. The next ability to level is highlighted green.
+- **Compact build path** — the "Build next" items are smaller and wrap to fit, so the whole build is
+  visible at once without scrolling sideways.
+- **Reasons at a glance** — each situational swap now shows a short "why" beside the item name, so
+  you don't need to hover to see what it counters.
+- **Clearer movement setting** — Settings now lists your ability-key layout first, then the movement
+  mode below it, with the keyboard option labeled to match your layout (WASD on QWERTY, ZQSD on
+  AZERTY, or your custom keys).
+
 ## 0.1.6
 
 - **Wider, two-column in-game layout** — the in-game page now grows sideways instead of ever taller:
