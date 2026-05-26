@@ -5,10 +5,12 @@
 // to this origin). Run it, then `npm run tauri dev`, and watch the build re-rank live.
 //
 // It does NOT touch production code: the app talks to it precisely because :2999 is the real Live
-// Client origin. To demo a live re-rank, it walks an enemy through a scripted purchase timeline,
-// each step introducing a *new* threat signal the engine reacts to (→ a recommendation update and
-// a build-shift toast). The game clock advances on every response, while the roster/items stay put
-// between steps — which also exercises the poller's diff (clock drift must NOT trigger a recompute).
+// Client origin. It starts the board from a *fresh game* — every player stripped to empty items at
+// ~0:30 — so you see the opening, from-scratch recommendation first, then walks a scripted timeline
+// that feeds the captured builds back in and layers on extra purchases. Each step introduces a *new*
+// threat signal the engine reacts to (→ a recommendation update and a build-shift toast). The game
+// clock advances on every response, while the roster/items stay put between steps — which also
+// exercises the poller's diff (clock drift must NOT trigger a recompute).
 //
 // Usage:  node scripts/mock-live-server.mjs   (or `npm run mock`)
 
@@ -36,6 +38,23 @@ const FIXTURE_PATH = join(
 /** Deep-clones the captured fixture so each mutation step builds on the last without aliasing. */
 const baseData = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
 const state = structuredClone(baseData);
+
+// ---------- Fresh-game reset --------------------------------------------------------
+// The captured fixture is a *mid-game* snapshot: everyone already owns items, so the first
+// recommendation the app would show is already "evolved." To demo a game from the opening whistle,
+// stash each player's captured loadout, then strip the board bare and feed those items back in over
+// the timeline. Now the app shows the from-scratch recommendation first, then re-ranks as the lobby
+// fills in its builds.
+const FRESH_START_GAMETIME = 30; // ~0:30 — laning just started; nobody has recalled to shop yet.
+const capturedLoadouts = state.allPlayers.map((p) => ({
+  championName: p.championName,
+  items: p.items,
+}));
+state.allPlayers.forEach((p) => {
+  p.items = [];
+});
+state.gameData.gameTime = FRESH_START_GAMETIME;
+
 const baseGameTime = state.gameData.gameTime;
 const startedAt = Date.now();
 
@@ -115,15 +134,34 @@ function buy(championName, itemID, displayName) {
   console.log(`  ${championName} bought ${displayName} (${itemID})`);
 }
 
-// Scripted enemy purchases. Each step adds a signal the enemy team wasn't projecting yet, so the
-// Ahri recommendation shifts (more penetration / antiheal / stasis) and a toast fires.
-const TIMELINE = [
+// The demo runs in two acts. Act 1 ("lane → mid game") feeds each player's captured fixture loadout
+// back in, one item-slot at a time across the whole lobby, so first items land before second items —
+// roughly how a real game paces out. Act 2 ("escalation") then layers on extra purchases, each adding
+// a *new* enemy threat signal the engine reacts to (→ a recommendation update and a build-shift toast).
+
+// Act 1 — replay the captured builds from empty.
+const maxSlots = Math.max(...capturedLoadouts.map((p) => p.items.length));
+const baseBuildSteps = [];
+for (let slot = 0; slot < maxSlots; slot += 1) {
+  for (const { championName, items } of capturedLoadouts) {
+    const item = items[slot];
+    if (item) {
+      baseBuildSteps.push(() => buy(championName, item.itemID, item.displayName));
+    }
+  }
+}
+
+// Act 2 — extra enemy purchases; each adds a signal the team wasn't projecting yet, so the Ahri
+// recommendation shifts (more penetration / antiheal / stasis) and a toast fires.
+const escalationSteps = [
   () => buy("Darius", 3053, "Sterak's Gage"), //   → health-stacking (frontline bulk)
   () => buy("Vi", 3065, "Spirit Visage"), //        → mr-stacking + has-sustain
   () => buy("Kaisa", 3072, "Bloodthirster"), //     → has-sustain (healing across the team)
   () => buy("Leona", 3068, "Sunfire Aegis"), //     → health + armor stacking
   () => buy("Zed", 3814, "Edge of Night"), //       → reinforces lethality (and a spellshield)
 ];
+
+const TIMELINE = [...baseBuildSteps, ...escalationSteps];
 
 let step = 0;
 const timer = setInterval(() => {
@@ -183,7 +221,7 @@ server.listen(PORT, HOST, () => {
     `Mock Live Client serving the Ahri fixture at https://${HOST}:${PORT}/liveclientdata/allgamedata`,
   );
   console.log(
-    `Walking the enemy purchase timeline every ${STEP_INTERVAL_MS / 1000}s. ` +
-      "Start the app with `npm run tauri dev`. Ctrl+C to stop.",
+    `Starting from a fresh game (empty builds) and walking the purchase timeline every ` +
+      `${STEP_INTERVAL_MS / 1000}s. Start the app with \`npm run tauri dev\`. Ctrl+C to stop.`,
   );
 });

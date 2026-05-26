@@ -1,0 +1,71 @@
+---
+source: src/meta/parse.rs
+expression: build
+---
+champion: Ahri
+role: mid
+availableRoles:
+  - adc
+  - jungle
+  - mid
+  - support
+  - top
+rank: diamond_plus
+patch: "15.9"
+winRate: 0.4991870605375958
+games: 47359
+startingItems:
+  - id: 1056
+    name: "Doran's Ring"
+  - id: 2003
+    name: Health Potion
+  - id: 2003
+    name: Health Potion
+coreItems:
+  - id: 3118
+    name: Malignance
+  - id: 3020
+    name: "Sorcerer's Shoes"
+  - id: 4645
+    name: Shadowflame
+options:
+  - id: 3089
+    name: "Rabadon's Deathcap"
+    winRate: 0.5523232323232323
+    games: 4950
+  - id: 3175
+    name: Imaginary Item
+    winRate: 0.7249486418625884
+    games: 4381
+  - id: 3041
+    name: "Mejai's Soulstealer"
+    winRate: 0.8114195914091147
+    games: 1909
+  - id: 3157
+    name: "Zhonya's Hourglass"
+    winRate: 0.5732337736932798
+    games: 1741
+  - id: 3135
+    name: Void Staff
+    winRate: 0.6218181818181818
+    games: 275
+skillOrder:
+  - W
+  - Q
+  - E
+  - Q
+  - Q
+  - R
+  - Q
+  - W
+  - Q
+  - W
+  - R
+  - W
+  - W
+  - E
+  - E
+  - R
+  - E
+  - E
+skillMaxPriority: QWE

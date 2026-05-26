@@ -137,6 +137,7 @@ describe("FE↔Rust live loop", () => {
     tauri.invokeHandlers["get_ddragon_version"] = () => "16.10.1";
     tauri.invokeHandlers["get_champion_display_name"] = (args) =>
       (args as { name: string }).name;
+    tauri.invokeHandlers["get_meta_build"] = () => null;
     tauri.invokeHandlers["get_settings"] = () => ({
       pollIntervalSecs: 3,
       theme: "dark",
@@ -144,6 +145,8 @@ describe("FE↔Rust live loop", () => {
       locale: "en_US",
       aggressiveness: "rules-only",
       abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+      metaRank: "diamond_plus",
+      showMetaPanel: true,
     });
     tauri.invokeHandlers["get_app_version"] = () => "0.1.3";
     tauri.invokeHandlers["check_for_update"] = () => null;

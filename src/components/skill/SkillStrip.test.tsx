@@ -46,6 +46,8 @@ const QWERTY_SETTINGS: Settings = {
   locale: "en_US",
   aggressiveness: "rules-only",
   abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+  metaRank: "diamond_plus",
+  showMetaPanel: true,
 };
 
 const AZERTY_SETTINGS: Settings = {

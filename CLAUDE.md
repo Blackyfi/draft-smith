@@ -10,8 +10,10 @@ recommends what to build next, for **any champion**, reacting to enemies' actual
 ## Non-negotiable constraints
 These are correctness/compliance invariants, not preferences. Violating any is a defect:
 
-1. **Riot-sanctioned data ONLY** — Live Client Data API (`https://127.0.0.1:2999/liveclientdata/`)
-   and Data Dragon CDN. No memory reading, DLL injection, packet sniffing, or the keyed REST API (v1).
+1. **In-game data is Riot-sanctioned ONLY** — the live matchup comes from the Live Client Data API
+   (`https://127.0.0.1:2999/liveclientdata/`) and Data Dragon CDN. Absolutely no memory reading, DLL
+   injection, packet sniffing, or the keyed REST API (v1). (Tier B meta-build stats are a *separate*,
+   out-of-game, owner-approved third-party source — see constraint #7.)
 2. **TLS exception scoped to `127.0.0.1:2999` only.** The Live Client self-signed cert is accepted
    *only* for that host:port. Never globally disable cert verification (`danger_accept_invalid_certs`
    must be on a client used exclusively for the local endpoint).
@@ -23,6 +25,14 @@ These are correctness/compliance invariants, not preferences. Violating any is a
 5. **No Arena items or Augment win rates** displayed, ever.
 6. **Never hardcode the patch version** — discover via DDragon `versions.json`.
    **Never fetch DDragon during a game** — cache to disk; refresh only on patch change.
+7. **Tier B meta-build stats (u.gg) are third-party and advisory.** The "highest win-rate build"
+   Meta panel is sourced from u.gg's public stats JSON — *not* Riot-sanctioned, a deliberate
+   owner-approved relaxation of the original "Riot data only" stance (PROJECT_SPEC §3.5). It is
+   fetched at most once per champion at game start and cached to disk (one overview holds all
+   roles/ranks; never polled mid-game), **Summoner's Rift builds only**, and presented as advisory
+   ("what wins on average"), never automation. Constraint #5 (no Arena/Augment win rates) still holds
+   absolutely. Use a *separate* ordinary HTTP client with a browser User-Agent — never the
+   `127.0.0.1:2999` cert-exception client.
 
 ## Stack (see PROJECT_SPEC.md §2 for rationale)
 - **Shell:** Tauri v2 (v2.10+) — Rust core in `src-tauri/`.

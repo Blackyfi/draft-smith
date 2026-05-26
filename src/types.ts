@@ -222,7 +222,74 @@ export interface Settings {
   aggressiveness: Aggressiveness;
   /** How ability keys are labeled in the skill-order coach (display-only). */
   abilityKeys: AbilityKeys;
+  /** Rank bracket for the Meta panel (default: "diamond_plus"). */
+  metaRank: Rank;
+  /** Whether the Meta panel is shown beside the Adapt panel in-game (default: true). */
+  showMetaPanel: boolean;
 }
+
+/**
+ * Mirrors `MetaItem` in `src-tauri/src/model/meta.rs` (serde `camelCase`).
+ * A single item in a meta build slot (core or starting) — no win-rate.
+ */
+export interface MetaItem {
+  id: number;
+  name: string;
+}
+
+/**
+ * Mirrors `MetaItemOption` in `src-tauri/src/model/meta.rs` (serde `camelCase`).
+ * A situational item option, optionally decorated with win-rate + game count from u.gg.
+ */
+export interface MetaItemOption {
+  id: number;
+  name: string;
+  winRate: number | null;
+  games: number | null;
+}
+
+/**
+ * Mirrors `MetaBuild` in `src-tauri/src/model/meta.rs` (serde `camelCase`).
+ * Highest win-rate build for a champion+role from u.gg (Tier B, PROJECT_SPEC §3.5).
+ * Fetched once at game start, cached to disk, never polled mid-game.
+ */
+export interface MetaBuild {
+  /** DDragon champion id (e.g. "Ahri", "Kaisa"). */
+  champion: string;
+  /** Resolved role: "top" | "jungle" | "mid" | "adc" | "support". */
+  role: string;
+  /** All roles with data available for this champion. */
+  availableRoles: string[];
+  /** Rank bracket (e.g. "diamond_plus"). */
+  rank: string;
+  /** Data Dragon patch version the data reflects (e.g. "15.9"). */
+  patch: string;
+  /** Win rate as a fraction (0–1), or null when unknown. */
+  winRate: number | null;
+  /** Sample size, or null when unknown. */
+  games: number | null;
+  /** Opening item set (e.g. starter + potions). */
+  startingItems: MetaItem[];
+  /** Core build items in order. */
+  coreItems: MetaItem[];
+  /** Situational fourth/fifth-slot choices with individual win rates. */
+  options: MetaItemOption[];
+  /** Recommended skill level order, e.g. ["Q","W","E","Q","Q","R",...]. */
+  skillOrder: string[];
+  /** Max priority shorthand, e.g. "QWE". */
+  skillMaxPriority: string;
+}
+
+/**
+ * Mirrors `Rank` in `src-tauri/src/model/meta.rs` (serde `kebab-case`).
+ * The matchmaking bracket to pull meta-build statistics from.
+ */
+export type Rank =
+  | "challenger"
+  | "master_plus"
+  | "diamond_plus"
+  | "emerald_plus"
+  | "platinum_plus";
 
 /**
  * Mirrors `UpdateInfo` in `src-tauri/src/commands.rs` (serde `camelCase`).

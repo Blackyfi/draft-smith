@@ -4,9 +4,12 @@
 use crate::ddragon::{
     self, cache::DdragonCache, fetch::DdragonFetcher, icons::IconKind, LoadOutcome, ResolvedData,
 };
+use crate::meta::{self, cache::MetaCache, fetch::MetaFetcher};
 use crate::model::settings::DEFAULT_LOCALE;
-use crate::model::{ChampionMeta, ConnectionStatus, DdragonStatus, Recommendation, Settings};
-use crate::state::{DdragonState, LiveState, SettingsState};
+use crate::model::{
+    ChampionMeta, ConnectionStatus, DdragonStatus, MetaBuild, Recommendation, Settings,
+};
+use crate::state::{DdragonState, LiveState, MetaState, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 /// Returns the current connection / coaching status, as maintained by the Live Client poller (M2).
@@ -229,6 +232,38 @@ pub async fn get_champion_display_name(
     Ok(guard
         .as_ref()
         .and_then(|data| data.champions.by_name_or_id(&name).map(|c| c.name.clone())))
+}
+
+/// Returns the "Tier B" meta build (highest-win-rate u.gg build) for a champion, role, and rank.
+///
+/// `champion` is the DDragon id the Live Client passes (e.g. "Ahri", "Kaisa"); `role` is a friendly
+/// name ("top"|"jungle"|"mid"|"adc"|"support") or `None` for the champion's primary (most-played)
+/// role; `rank` is a friendly rank key ("diamond_plus", "platinum_plus", "challenger", …) with
+/// Diamond+ as the fallback for an unknown value.
+///
+/// One fetched overview JSON covers every role/rank, so this fetches + caches at most **once per
+/// champion + patch**; a warm cache does no network (CLAUDE.md #6, "no repeated fetch mid-game").
+/// Returns `Ok(None)` when DDragon hasn't loaded, the champion is unknown, or u.gg has no data for
+/// the requested role/rank; `Err` only for a genuine fetch/parse failure.
+#[tauri::command]
+pub async fn get_meta_build(
+    champion: String,
+    role: Option<String>,
+    rank: String,
+    ddragon: State<'_, DdragonState>,
+    meta_state: State<'_, MetaState>,
+) -> Result<Option<MetaBuild>, String> {
+    // Snapshot the resolved DDragon data (clone, then release the read lock before any network).
+    let Some(data) = ddragon.data.read().await.clone() else {
+        return Ok(None);
+    };
+
+    let cache = MetaCache::new(meta_state.cache_root.clone());
+    let fetcher = MetaFetcher::new().map_err(|err| err.to_string())?;
+
+    meta::build_for(&cache, &fetcher, &data, &champion, role.as_deref(), &rank)
+        .await
+        .map_err(|err| err.to_string())
 }
 
 /// Shared body for the icon commands: pick the icon filename + patch from loaded state (releasing
