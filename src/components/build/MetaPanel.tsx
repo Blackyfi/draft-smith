@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/tooltip";
 import { useMetaBuild } from "@/hooks/useMetaBuild";
 import { cn } from "@/lib/utils";
-import type { MetaBuild, MetaItem, MetaItemOption, Rank } from "@/types";
+import type {
+  AbilityRanks,
+  MetaBuild,
+  MetaItem,
+  MetaItemOption,
+  Rank,
+} from "@/types";
 
 // --- Pretty labels ---
 
@@ -106,20 +112,64 @@ function OptionRow({ option }: { option: MetaItemOption }) {
   );
 }
 
-/** Compact skill order display: each slot as a small badge, then max-priority shorthand. */
+/** Rank the player currently has in the slot named by a skill-order letter ("Q"/"W"/"E"/"R"). */
+function rankForLetter(letter: string, ranks: AbilityRanks): number {
+  switch (letter.toUpperCase()) {
+    case "Q":
+      return ranks.q;
+    case "W":
+      return ranks.w;
+    case "E":
+      return ranks.e;
+    case "R":
+      return ranks.r;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Compact skill order display: each level's slot as a small badge, then the max-priority shorthand.
+ *
+ * When live `ranks` are supplied, every box the player has already invested a point in lights up —
+ * the *n*th box for a letter fills once that ability reaches rank *n*. This tracks the player's
+ * real progress through the plan **even if they leveled in a different order**, since it counts
+ * actual ranks per ability rather than assuming the recommended sequence was followed.
+ */
 function SkillOrderLine({
   skillOrder,
   skillMaxPriority,
+  ranks,
 }: {
   skillOrder: string[];
   skillMaxPriority: string;
+  ranks?: AbilityRanks;
 }) {
+  // Precompute, per box, whether it's "taken": the k-th occurrence of a letter is taken once the
+  // player's rank in that ability is ≥ k. Done in a pass so render stays side-effect-free.
+  const seen: Record<string, number> = {};
+  const taken = skillOrder.map((slot) => {
+    const key = slot.toUpperCase();
+    seen[key] = (seen[key] ?? 0) + 1;
+    return ranks != null && seen[key] <= rankForLetter(key, ranks);
+  });
+
   return (
     <div className="flex flex-wrap items-center gap-1">
       {skillOrder.map((slot, i) => (
         <span
           key={i}
-          className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground"
+          aria-label={
+            taken[i]
+              ? `${slot}, leveled (point spent)`
+              : `${slot}, level ${i + 1}`
+          }
+          className={cn(
+            "flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
+            taken[i]
+              ? "bg-primary/25 text-primary ring-1 ring-inset ring-primary/50"
+              : "bg-muted text-muted-foreground",
+          )}
         >
           {slot}
         </span>
@@ -218,7 +268,13 @@ function MetaPanelUnavailable() {
 
 // --- Build content body ---
 
-function MetaBuildContent({ build }: { build: MetaBuild }) {
+function MetaBuildContent({
+  build,
+  ranks,
+}: {
+  build: MetaBuild;
+  ranks?: AbilityRanks;
+}) {
   return (
     <div className="flex flex-col gap-3">
       {/* Advisory framing — never hidden so users always understand what this panel is. */}
@@ -234,8 +290,8 @@ function MetaBuildContent({ build }: { build: MetaBuild }) {
             Core build
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {build.coreItems.map((item) => (
-              <MetaItemChip key={item.id} item={item} />
+            {build.coreItems.map((item, i) => (
+              <MetaItemChip key={`${item.id}-${i}`} item={item} />
             ))}
           </div>
         </div>
@@ -247,9 +303,12 @@ function MetaBuildContent({ build }: { build: MetaBuild }) {
           <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Starting
           </span>
+          {/* Starting builds legitimately repeat an item id (e.g. multiple Health Potions),
+              so the key must include the index — a bare item.id collides and breaks React's
+              list reconciliation (duplicate chips pile up across role toggles). */}
           <div className="flex flex-wrap gap-1.5">
-            {build.startingItems.map((item) => (
-              <MetaItemChip key={item.id} item={item} />
+            {build.startingItems.map((item, i) => (
+              <MetaItemChip key={`${item.id}-${i}`} item={item} />
             ))}
           </div>
         </div>
@@ -281,6 +340,7 @@ function MetaBuildContent({ build }: { build: MetaBuild }) {
             <SkillOrderLine
               skillOrder={build.skillOrder}
               skillMaxPriority={build.skillMaxPriority}
+              ranks={ranks}
             />
           </div>
         </div>
@@ -301,6 +361,8 @@ interface MetaPanelProps {
   /** DDragon champion id (e.g. "Ahri", "Kaisa"). Null hides the panel. */
   champion: string | null;
   rank: Rank;
+  /** Live ability ranks; lights up the skill-order boxes the player has already taken. */
+  abilityRanks?: AbilityRanks;
 }
 
 /**
@@ -312,7 +374,7 @@ interface MetaPanelProps {
  * Role can be toggled locally; changing it re-queries useMetaBuild with the selected role.
  * Respects prefers-reduced-motion; transitions ≤150ms. Color always paired with text+icon.
  */
-export function MetaPanel({ champion, rank }: MetaPanelProps) {
+export function MetaPanel({ champion, rank, abilityRanks }: MetaPanelProps) {
   // null role lets Rust resolve the most-played; override once user picks or data arrives.
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
@@ -361,7 +423,7 @@ export function MetaPanel({ champion, rank }: MetaPanelProps) {
       {/* Body */}
       {isLoading && <MetaPanelSkeleton />}
       {!isLoading && (isError || data == null) && <MetaPanelUnavailable />}
-      {data && <MetaBuildContent build={data} />}
+      {data && <MetaBuildContent build={data} ranks={abilityRanks} />}
     </section>
   );
 }

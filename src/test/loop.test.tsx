@@ -87,6 +87,7 @@ const REC_A: Recommendation = {
   ],
   focus: [],
   skill: null,
+  abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
 };
 
 // Vi reveals magic-resist stacking → Void Staff is promoted to the next purchase.
@@ -144,7 +145,11 @@ describe("FE↔Rust live loop", () => {
       alwaysOnTop: false,
       locale: "en_US",
       aggressiveness: "rules-only",
-      abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+      abilityKeys: {
+        layout: "qwerty",
+        custom: ["Q", "W", "E", "R"],
+        movementMode: "mouse",
+      },
       metaRank: "diamond_plus",
       showMetaPanel: true,
     });

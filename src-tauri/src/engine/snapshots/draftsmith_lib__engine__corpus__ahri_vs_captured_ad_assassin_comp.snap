@@ -1,6 +1,5 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 48
 expression: rec
 ---
 selfChampion: Ahri
@@ -76,3 +75,8 @@ skill:
   pointAvailable: false
   atLevel: 10
   reason: Max Fox-Fire next.
+abilityRanks:
+  q: 5
+  w: 2
+  e: 1
+  r: 1

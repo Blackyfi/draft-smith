@@ -18,6 +18,7 @@ function rec(
     threats,
     focus: [],
     skill: null,
+    abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
   };
 }
 

@@ -194,6 +194,22 @@ pub struct Recommendation {
     /// Which ability to level next (skill-order coach), or `None` when DDragon/live data is
     /// insufficient or the champion has no authored skill plan.
     pub skill: Option<SkillAdvice>,
+    /// The active player's current ability ranks (Q/W/E/R), so the UI can show live skill-order
+    /// progress — which letters of a plan the player has already taken, *independent of whether
+    /// they followed the recommended order*. All zero before the game or when live data is absent.
+    pub ability_ranks: AbilityRanks,
+}
+
+/// The active player's current ability ranks (points invested per slot), in canonical Q/W/E/R
+/// order. A flat display value — never a control-flow branch. Mirrors `AbilityRanks` in
+/// `src/types.ts`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AbilityRanks {
+    pub q: u32,
+    pub w: u32,
+    pub e: u32,
+    pub r: u32,
 }
 
 /// One of the four ability slots, in canonical Live Client order: Q/W/E = basic abilities,

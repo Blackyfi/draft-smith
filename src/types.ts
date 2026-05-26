@@ -160,6 +160,18 @@ export interface SkillAdvice {
 }
 
 /**
+ * Mirrors `AbilityRanks` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * The active player's current ability ranks (points invested per slot). Drives the live
+ * skill-order progress highlight; all zero before the game or when live data is absent.
+ */
+export interface AbilityRanks {
+  q: number;
+  w: number;
+  e: number;
+  r: number;
+}
+
+/**
  * Mirrors `Recommendation` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
  * Body of the `recommendation-updated` event and the `get_current_recommendation` command.
  */
@@ -173,6 +185,8 @@ export interface Recommendation {
   focus: FocusTarget[];
   /** Which ability to level next, or null when unavailable / champion not authored. */
   skill: SkillAdvice | null;
+  /** The player's current ability ranks (Q/W/E/R) for live skill-order progress. */
+  abilityRanks: AbilityRanks;
 }
 
 /**
@@ -196,6 +210,14 @@ export type Aggressiveness = "rules-only" | "stats-biased";
 export type KeyLayout = "qwerty" | "azerty" | "custom";
 
 /**
+ * Mirrors `MovementMode` in `src-tauri/src/model/settings.rs` (serde `kebab-case`).
+ * In-game movement scheme. `mouse` = classic right-click-to-move (abilities on the layout letters).
+ * `keyboard` = League's Keyboard (WASD) input, where the Q ability moves to the right mouse button
+ * and the W ability moves to Left Shift; E/R stay on their layout keys. Display-only.
+ */
+export type MovementMode = "mouse" | "keyboard";
+
+/**
  * Mirrors `AbilityKeys` in `src-tauri/src/model/settings.rs` (serde `camelCase`).
  * How ability slots are labeled in the skill-order coach.
  */
@@ -203,6 +225,8 @@ export interface AbilityKeys {
   layout: KeyLayout;
   /** Custom display letters for slots [Q, W, E, R]; used only when `layout === "custom"`. */
   custom: [string, string, string, string];
+  /** Movement scheme; remaps the Q/W slot labels (Q→right-click, W→Shift) when `"keyboard"`. */
+  movementMode: MovementMode;
 }
 
 /**

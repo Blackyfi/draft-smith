@@ -45,19 +45,40 @@ const QWERTY_SETTINGS: Settings = {
   alwaysOnTop: false,
   locale: "en_US",
   aggressiveness: "rules-only",
-  abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+  abilityKeys: {
+    layout: "qwerty",
+    custom: ["Q", "W", "E", "R"],
+    movementMode: "mouse",
+  },
   metaRank: "diamond_plus",
   showMetaPanel: true,
 };
 
 const AZERTY_SETTINGS: Settings = {
   ...QWERTY_SETTINGS,
-  abilityKeys: { layout: "azerty", custom: ["Q", "W", "E", "R"] },
+  abilityKeys: {
+    layout: "azerty",
+    custom: ["Q", "W", "E", "R"],
+    movementMode: "mouse",
+  },
 };
 
 const CUSTOM_SETTINGS: Settings = {
   ...QWERTY_SETTINGS,
-  abilityKeys: { layout: "custom", custom: ["1", "2", "3", "4"] },
+  abilityKeys: {
+    layout: "custom",
+    custom: ["1", "2", "3", "4"],
+    movementMode: "mouse",
+  },
+};
+
+const WASD_SETTINGS: Settings = {
+  ...QWERTY_SETTINGS,
+  abilityKeys: {
+    layout: "qwerty",
+    custom: ["Q", "W", "E", "R"],
+    movementMode: "keyboard",
+  },
 };
 
 const REC_WITH_SKILL_NOW: Recommendation = {
@@ -73,6 +94,7 @@ const REC_WITH_SKILL_NOW: Recommendation = {
     atLevel: 3,
     reason: "Max Q first for poke damage",
   },
+  abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
 };
 
 const REC_WITH_SKILL_LOOKAHEAD: Recommendation = {
@@ -88,6 +110,7 @@ const REC_WITH_SKILL_LOOKAHEAD: Recommendation = {
     atLevel: 8,
     reason: "Level W second after Q max",
   },
+  abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
 };
 
 const REC_NO_SKILL: Recommendation = {
@@ -97,6 +120,7 @@ const REC_NO_SKILL: Recommendation = {
   threats: [],
   focus: [],
   skill: null,
+  abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
 };
 
 // ---------- Helpers ----------
@@ -168,6 +192,31 @@ describe("SkillStrip", () => {
       // custom[0] = "1" for Q slot
       expect(await screen.findByLabelText("Ability key 1")).toBeInTheDocument();
       expect(screen.getByText("Level up now")).toBeInTheDocument();
+    });
+  });
+
+  describe("keyboard (WASD) movement mode", () => {
+    it("shows the Q ability on the right mouse button (RMB)", async () => {
+      tauri.invokeHandlers["get_current_recommendation"] = () =>
+        REC_WITH_SKILL_NOW;
+      renderStrip(WASD_SETTINGS);
+
+      // Badge label is "RMB", accessible name spells out "Right mouse button".
+      expect(
+        await screen.findByLabelText("Ability key Right mouse button"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("RMB")).toBeInTheDocument();
+    });
+
+    it("shows the W ability on Shift", async () => {
+      tauri.invokeHandlers["get_current_recommendation"] = () =>
+        REC_WITH_SKILL_LOOKAHEAD;
+      renderStrip(WASD_SETTINGS);
+
+      expect(
+        await screen.findByLabelText("Ability key Left Shift"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Shift")).toBeInTheDocument();
     });
   });
 

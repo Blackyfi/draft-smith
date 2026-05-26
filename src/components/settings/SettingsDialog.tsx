@@ -33,7 +33,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { api } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
-import type { KeyLayout, Rank } from "@/types";
+import type { KeyLayout, MovementMode, Rank } from "@/types";
 
 /** Rank options for the Meta panel (Tier B). */
 const RANK_OPTIONS: { value: Rank; label: string }[] = [
@@ -272,6 +272,39 @@ export function SettingsDialog() {
             <p className="text-[11px] text-muted-foreground">
               Rank bracket used for the Meta panel win-rate data (u.gg).
               Default: Diamond+.
+            </p>
+          </div>
+
+          {/* Movement mode — changes how the Q/W ability slots are pressed (WASD remaps them). */}
+          <div className="grid gap-1.5">
+            <Label htmlFor="movement-mode-select">Movement mode</Label>
+            <Select
+              value={settings.abilityKeys.movementMode}
+              onValueChange={(v) =>
+                update({
+                  abilityKeys: {
+                    ...settings.abilityKeys,
+                    movementMode: v as MovementMode,
+                  },
+                })
+              }
+            >
+              <SelectTrigger id="movement-mode-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mouse">
+                  Mouse — right-click to move
+                </SelectItem>
+                <SelectItem value="keyboard">
+                  Keyboard (WASD) movement
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              In Keyboard (WASD) mode the skill coach shows your Q on
+              right-click (RMB) and W on Shift, matching League's WASD input. E
+              and R keep their layout keys.
             </p>
           </div>
 

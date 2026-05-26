@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Zap } from "lucide-react";
 
-import { slotToKey } from "@/lib/abilityKeys";
+import { slotToKey, slotToKeyAria } from "@/lib/abilityKeys";
 import { useRecommendation } from "@/hooks/useRecommendation";
 import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
@@ -22,15 +22,20 @@ export function SkillStrip() {
   const { data: settings } = useSettings();
 
   const skill = rec?.skill ?? null;
-  const abilityKeys = settings?.abilityKeys ?? { layout: "qwerty" as const, custom: ["Q", "W", "E", "R"] as [string, string, string, string] };
+  const abilityKeys = settings?.abilityKeys ?? {
+    layout: "qwerty" as const,
+    custom: ["Q", "W", "E", "R"] as [string, string, string, string],
+    movementMode: "mouse" as const,
+  };
 
   const reduceMotion = useReducedMotion();
 
+  // Q/W become "RMB"/"Shift" in WASD mode — let the badge grow past a square for multi-char labels.
+  const keyLabel = skill ? slotToKey(skill.slot, abilityKeys) : "";
+  const multiChar = keyLabel.length > 1;
+
   return (
-    <section
-      aria-labelledby="skill-heading"
-      className="flex flex-col gap-1.5"
-    >
+    <section aria-labelledby="skill-heading" className="flex flex-col gap-1.5">
       <h2
         id="skill-heading"
         className="flex items-center gap-1.5 px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
@@ -54,23 +59,30 @@ export function SkillStrip() {
             skill.pointAvailable && "border-primary/50",
           )}
         >
-          {/* Key badge */}
+          {/* Key badge — square for single letters; grows to a pill for "RMB"/"Shift" (WASD mode). */}
           <motion.span
-            aria-label={`Ability key ${slotToKey(skill.slot, abilityKeys)}`}
+            aria-label={`Ability key ${slotToKeyAria(skill.slot, abilityKeys)}`}
             animate={
               skill.pointAvailable && !reduceMotion
-                ? { boxShadow: ["0 0 0px rgba(var(--primary),0)", "0 0 8px rgba(var(--primary),0.6)", "0 0 0px rgba(var(--primary),0)"] }
+                ? {
+                    boxShadow: [
+                      "0 0 0px rgba(var(--primary),0)",
+                      "0 0 8px rgba(var(--primary),0.6)",
+                      "0 0 0px rgba(var(--primary),0)",
+                    ],
+                  }
                 : {}
             }
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-bold tabular-nums",
+              "flex h-8 shrink-0 items-center justify-center rounded-md font-bold tabular-nums",
+              multiChar ? "min-w-8 px-2 text-xs" : "w-8 text-sm",
               skill.pointAvailable
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground",
             )}
           >
-            {slotToKey(skill.slot, abilityKeys)}
+            {keyLabel}
           </motion.span>
 
           {/* Content */}

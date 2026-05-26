@@ -1,6 +1,5 @@
 ---
 source: src/engine/corpus.rs
-assertion_line: 73
 expression: rec
 ---
 selfChampion: Jinx
@@ -83,3 +82,8 @@ focus:
     priority: secondary
     reason: Delete Ornn — the best target available.
 skill: ~
+abilityRanks:
+  q: 0
+  w: 0
+  e: 0
+  r: 0
