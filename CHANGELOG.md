@@ -2,6 +2,23 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.6
+
+- **Wider, two-column in-game layout** — the in-game page now grows sideways instead of ever taller:
+  build guidance (skill order, the Adapt build, the Meta build) on the left, situational awareness
+  (who to focus, enemy threats, situational swaps) on the right. The window opens wider and keeps
+  the same comfortable height; on narrow windows it falls back to a single column.
+- **Explain-on-hover threat pills** — hover (or focus) any enemy's archetype or live-signal pill
+  ("Fed", "Mobility", "Healing", …) to read what it means and how to play around it.
+- **Keyboard (WASD) movement mode** — a new Settings option: if you move with WASD, the skill-order
+  coach shows your Q on right-click (RMB) and W on Shift to match League's WASD input (E and R keep
+  their layout keys).
+- **Live skill-order progress** — the Meta panel's skill order now lights up each ability box as you
+  spend points, so you can see where you are in your level-ups even if you stray from the suggested
+  order.
+- **Fix** — switching roles in the Meta panel no longer multiplies the starting Health Potions (they
+  could pile up indefinitely); build lists now render correctly when an item appears more than once.
+
 ## 0.1.5
 
 - **Meta build panel** — alongside the matchup-aware "Adapt" build, DraftSmith now shows the
