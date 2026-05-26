@@ -29,7 +29,7 @@
 //! (e.g. `[3041, 1549, 1909]` => 81%, sensible). No sibling rankings endpoint is needed.
 
 use crate::model::{ItemMeta, MetaBuild, MetaItem, MetaItemOption};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// u.gg region code for World (the aggregate across regions).
 pub const REGION_WORLD: &str = "12";
@@ -102,6 +102,10 @@ const NON_BUILD_TAGS: [&str; 3] = ["Consumable", "Trinket", "Vision"];
 /// Cap on situational options shown — u.gg lists many thin-sample ids; we keep the most-played.
 const MAX_OPTIONS: usize = 6;
 
+/// Target length of the displayed core sequence: u.gg only ships 3 hard "core" items, so we extend
+/// up to a full six-item build by promoting each later slot's most-played pick (see [`core_sequence`]).
+const CORE_SEQUENCE_LEN: usize = 6;
+
 /// Whether an option item should appear in the situational build list. Unknown items (absent from
 /// DDragon) are kept rather than silently dropped — consistent with [`resolve_item`].
 fn is_build_item(id: u32, items: &HashMap<u32, ItemMeta>) -> bool {
@@ -127,7 +131,13 @@ fn option_id(v: &Json) -> Option<u32> {
 
 /// Flattens all `block[5]` situational-option groups into a deduplicated option list (keeping the
 /// entry with the most games per item), each carrying a per-item win rate from `[id, wins, games]`.
-fn options(block: &Json, items: &HashMap<u32, ItemMeta>) -> Vec<MetaItemOption> {
+/// Items in `exclude` (those already promoted into the core sequence) are dropped so nothing appears
+/// in both the "Core build" and "Situational" lists.
+fn options(
+    block: &Json,
+    items: &HashMap<u32, ItemMeta>,
+    exclude: &HashSet<u32>,
+) -> Vec<MetaItemOption> {
     let Some(groups) = block.get(5).and_then(Json::as_array) else {
         return Vec::new();
     };
@@ -149,6 +159,9 @@ fn options(block: &Json, items: &HashMap<u32, ItemMeta>) -> Vec<MetaItemOption> 
             ) else {
                 continue;
             };
+            if exclude.contains(&id) {
+                continue; // already promoted into the core sequence — don't list it twice
+            }
             if !is_build_item(id, items) {
                 continue; // skip consumables / wards / trinkets (data-driven, by DDragon tag)
             }
@@ -183,6 +196,52 @@ fn options(block: &Json, items: &HashMap<u32, ItemMeta>) -> Vec<MetaItemOption> 
     opts.sort_by_key(|o| std::cmp::Reverse(o.games));
     opts.truncate(MAX_OPTIONS);
     opts
+}
+
+/// Builds the displayed core *sequence*: u.gg's three hard core items (`block[3]`) followed by the
+/// most-played buildable pick from each subsequent item-slot group in `block[5]`, de-duplicated and
+/// capped at a full six-item build.
+///
+/// u.gg only marks three items as "core"; the 4th/5th/6th slots live as the same option groups we
+/// surface under "Situational". Promoting each slot's top pick turns the panel's "Core build" from a
+/// 3-item stub into a complete build path, while [`options`] drops anything promoted here so an item
+/// never shows in both lists. Consumables/wards/trinkets are skipped (data-driven, by DDragon tag),
+/// as are ids already in the sequence.
+fn core_sequence(block: &Json, items: &HashMap<u32, ItemMeta>) -> Vec<MetaItem> {
+    let mut seq = item_list(block, 3, items);
+    let mut seen: HashSet<u32> = seq.iter().map(|i| i.id).collect();
+
+    let Some(groups) = block.get(5).and_then(Json::as_array) else {
+        return seq;
+    };
+    for group in groups {
+        if seq.len() >= CORE_SEQUENCE_LEN {
+            break;
+        }
+        let Some(entries) = group.as_array() else {
+            continue;
+        };
+        // The most-played buildable, not-yet-included pick in this slot group (`[id, wins, games]`).
+        // First-wins on a games tie (`>` keeps the earlier entry), matching [`options`]'s tie rule so
+        // the two lists stay consistent. (`max_by_key` would instead keep the *last* tied entry.)
+        let best = entries
+            .iter()
+            .filter_map(|entry| {
+                let arr = entry.as_array()?;
+                let id = arr.first().and_then(option_id)?;
+                let games = arr.get(2).and_then(Json::as_u64).unwrap_or(0);
+                (is_build_item(id, items) && !seen.contains(&id)).then_some((id, games))
+            })
+            .fold(None::<(u32, u64)>, |best, (id, games)| match best {
+                Some((_, best_games)) if best_games >= games => best,
+                _ => Some((id, games)),
+            });
+        if let Some((id, _)) = best {
+            seen.insert(id);
+            seq.push(resolve_item(id, items));
+        }
+    }
+    seq
 }
 
 /// Reads the skill order (`block[4][2]`) and max-priority string (`block[4][3]`).
@@ -288,8 +347,9 @@ pub fn build_for(
 
     let (win_rate, games) = overall(block);
     let starting_items = item_list(block, 2, items);
-    let core_items = item_list(block, 3, items);
-    let opts = options(block, items);
+    let core_items = core_sequence(block, items);
+    let core_ids: HashSet<u32> = core_items.iter().map(|i| i.id).collect();
+    let opts = options(block, items, &core_ids);
     let (skill_order, skill_max_priority) = skills(block);
 
     // A wholly empty role block is treated as "no data" so the caller can show an empty state.
@@ -392,12 +452,22 @@ mod tests {
         )
         .expect("Ahri Diamond+ mid has data");
 
-        // Core path from block[3] = [3118, 3020, 4645].
+        // Core sequence: the three hard core items (block[3] = [3118, 3020, 4645]) extended with the
+        // most-played pick from each later slot group in block[5] — 3089 (4950 games), then 3157
+        // (1741, since 3089 is already in), then 3135 (275) — for a full six-item build.
         assert_eq!(
             build.core_items.iter().map(|i| i.id).collect::<Vec<_>>(),
-            vec![3118, 3020, 4645]
+            vec![3118, 3020, 4645, 3089, 3157, 3135]
         );
         assert_eq!(build.core_items[0].name, "Malignance");
+
+        // Promoted items must not also appear in the situational options (no double-listing).
+        for promoted in [3089u32, 3157, 3135] {
+            assert!(
+                !build.options.iter().any(|o| o.id == promoted),
+                "item {promoted} promoted to core should be excluded from options"
+            );
+        }
 
         // Skill order + max priority from block[4].
         assert_eq!(build.skill_max_priority, "QWE");

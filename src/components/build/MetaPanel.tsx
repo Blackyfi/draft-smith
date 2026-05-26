@@ -17,14 +17,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMetaBuild } from "@/hooks/useMetaBuild";
+import { slotToKey, slotToKeyAria, slotToLayoutKey } from "@/lib/abilityKeys";
 import { cn } from "@/lib/utils";
 import type {
+  AbilityKeys,
   AbilityRanks,
+  AbilitySlot,
   MetaBuild,
   MetaItem,
   MetaItemOption,
   Rank,
 } from "@/types";
+
+/** Default keybind display when settings haven't loaded yet (matches SkillStrip's fallback). */
+const DEFAULT_ABILITY_KEYS: AbilityKeys = {
+  layout: "qwerty",
+  custom: ["Q", "W", "E", "R"],
+  movementMode: "mouse",
+};
+
+/** A u.gg skill-order letter is a Q/W/E/R slot, or `null` if it's something we don't recognise. */
+function asSlot(letter: string): AbilitySlot | null {
+  const up = letter.toUpperCase();
+  return up === "Q" || up === "W" || up === "E" || up === "R" ? up : null;
+}
 
 // --- Pretty labels ---
 
@@ -131,18 +147,26 @@ function rankForLetter(letter: string, ranks: AbilityRanks): number {
 /**
  * Compact skill order display: each level's slot as a small badge, then the max-priority shorthand.
  *
+ * Keys follow the player's keybind settings (`abilityKeys`): AZERTY shows A/Z/E/R, and League's
+ * Keyboard (WASD) movement mode shows the Q slot as "RMB" and the W slot as "Shift" — so the
+ * sequence matches what they actually press, not a fixed Q/W/E/R. Multi-char labels grow from a
+ * square to a pill.
+ *
  * When live `ranks` are supplied, every box the player has already invested a point in lights up —
  * the *n*th box for a letter fills once that ability reaches rank *n*. This tracks the player's
  * real progress through the plan **even if they leveled in a different order**, since it counts
- * actual ranks per ability rather than assuming the recommended sequence was followed.
+ * actual ranks per ability rather than assuming the recommended sequence was followed. The earliest
+ * box they haven't fulfilled yet is highlighted green as the next point to invest.
  */
 function SkillOrderLine({
   skillOrder,
   skillMaxPriority,
+  abilityKeys,
   ranks,
 }: {
   skillOrder: string[];
   skillMaxPriority: string;
+  abilityKeys: AbilityKeys;
   ranks?: AbilityRanks;
 }) {
   // Precompute, per box, whether it's "taken": the k-th occurrence of a letter is taken once the
@@ -153,30 +177,51 @@ function SkillOrderLine({
     seen[key] = (seen[key] ?? 0) + 1;
     return ranks != null && seen[key] <= rankForLetter(key, ranks);
   });
+  // The next point to invest is the earliest box the player hasn't fulfilled. Only meaningful once
+  // we have live ranks; with none, -1 means "highlight nothing".
+  const nextIndex = ranks != null ? taken.findIndex((t) => !t) : -1;
 
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {skillOrder.map((slot, i) => (
-        <span
-          key={i}
-          aria-label={
-            taken[i]
-              ? `${slot}, leveled (point spent)`
-              : `${slot}, level ${i + 1}`
-          }
-          className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
-            taken[i]
-              ? "bg-primary/25 text-primary ring-1 ring-inset ring-primary/50"
-              : "bg-muted text-muted-foreground",
-          )}
-        >
-          {slot}
-        </span>
-      ))}
+      {skillOrder.map((slot, i) => {
+        const parsed = asSlot(slot);
+        const label = parsed ? slotToKey(parsed, abilityKeys) : slot;
+        const ariaKey = parsed ? slotToKeyAria(parsed, abilityKeys) : slot;
+        const isNext = i === nextIndex;
+        const multiChar = label.length > 1;
+        return (
+          <span
+            key={i}
+            aria-label={
+              taken[i]
+                ? `${ariaKey}, leveled (point spent)`
+                : isNext
+                  ? `${ariaKey}, level ${i + 1} — level up next`
+                  : `${ariaKey}, level ${i + 1}`
+            }
+            className={cn(
+              "flex h-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
+              multiChar ? "min-w-5 px-1" : "w-5",
+              taken[i]
+                ? "bg-primary/25 text-primary ring-1 ring-inset ring-primary/50"
+                : isNext
+                  ? "bg-emerald-500/25 text-emerald-700 ring-1 ring-inset ring-emerald-500/60 dark:text-emerald-400"
+                  : "bg-muted text-muted-foreground",
+            )}
+          >
+            {label}
+          </span>
+        );
+      })}
       {skillMaxPriority && (
         <span className="ml-1 text-[10px] text-muted-foreground">
-          Max {skillMaxPriority}
+          Max{" "}
+          {[...skillMaxPriority]
+            .map((c) => {
+              const parsed = asSlot(c);
+              return parsed ? slotToLayoutKey(parsed, abilityKeys) : c;
+            })
+            .join("")}
         </span>
       )}
     </div>
@@ -270,9 +315,11 @@ function MetaPanelUnavailable() {
 
 function MetaBuildContent({
   build,
+  abilityKeys,
   ranks,
 }: {
   build: MetaBuild;
+  abilityKeys: AbilityKeys;
   ranks?: AbilityRanks;
 }) {
   return (
@@ -340,6 +387,7 @@ function MetaBuildContent({
             <SkillOrderLine
               skillOrder={build.skillOrder}
               skillMaxPriority={build.skillMaxPriority}
+              abilityKeys={abilityKeys}
               ranks={ranks}
             />
           </div>
@@ -363,6 +411,8 @@ interface MetaPanelProps {
   rank: Rank;
   /** Live ability ranks; lights up the skill-order boxes the player has already taken. */
   abilityRanks?: AbilityRanks;
+  /** Keybind display settings; drives the skill-order key labels (AZERTY / WASD remaps). */
+  abilityKeys?: AbilityKeys;
 }
 
 /**
@@ -374,7 +424,12 @@ interface MetaPanelProps {
  * Role can be toggled locally; changing it re-queries useMetaBuild with the selected role.
  * Respects prefers-reduced-motion; transitions ≤150ms. Color always paired with text+icon.
  */
-export function MetaPanel({ champion, rank, abilityRanks }: MetaPanelProps) {
+export function MetaPanel({
+  champion,
+  rank,
+  abilityRanks,
+  abilityKeys = DEFAULT_ABILITY_KEYS,
+}: MetaPanelProps) {
   // null role lets Rust resolve the most-played; override once user picks or data arrives.
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
@@ -423,7 +478,13 @@ export function MetaPanel({ champion, rank, abilityRanks }: MetaPanelProps) {
       {/* Body */}
       {isLoading && <MetaPanelSkeleton />}
       {!isLoading && (isError || data == null) && <MetaPanelUnavailable />}
-      {data && <MetaBuildContent build={data} ranks={abilityRanks} />}
+      {data && (
+        <MetaBuildContent
+          build={data}
+          abilityKeys={abilityKeys}
+          ranks={abilityRanks}
+        />
+      )}
     </section>
   );
 }

@@ -24,8 +24,8 @@ export function BuildNext({ buildPath }: { buildPath: BuildStep[] }) {
         <Swords className="size-3.5" aria-hidden="true" />
         Build next
       </h2>
-      <div className="-mx-1 overflow-x-auto px-1 pt-2 pb-1">
-        <ul className="flex gap-2">
+      <div className="px-1 pt-2 pb-1">
+        <ul className="flex flex-wrap gap-1.5 gap-y-3">
           <AnimatePresence initial={false} mode="popLayout">
             {buildPath.map((step) => (
               <motion.li

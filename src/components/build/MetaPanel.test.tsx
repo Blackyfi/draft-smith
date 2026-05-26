@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MetaPanel } from "@/components/build/MetaPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { MetaBuild } from "@/types";
+import type { AbilityKeys, AbilityRanks, MetaBuild } from "@/types";
 
 // ---------- Tauri mock (same pattern as loop.test.tsx) ----------
 const tauri = vi.hoisted(() => {
@@ -180,6 +180,60 @@ describe("MetaPanel", () => {
     it("renders the skill max priority", async () => {
       renderPanel();
       expect(await screen.findByText("Max QWE")).toBeInTheDocument();
+    });
+  });
+
+  describe("keybind-aware skill order", () => {
+    beforeEach(() => {
+      tauri.invokeHandlers["get_meta_build"] = () => SAMPLE_BUILD;
+    });
+
+    function renderWithKeys(
+      abilityKeys: AbilityKeys,
+      abilityRanks?: AbilityRanks,
+    ) {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      queryClient.setQueryData(["ddragon-version"], "15.9.1");
+      return render(
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <MetaPanel
+              champion="Ahri"
+              rank="diamond_plus"
+              abilityKeys={abilityKeys}
+              abilityRanks={abilityRanks}
+            />
+          </TooltipProvider>
+        </QueryClientProvider>,
+      );
+    }
+
+    it("remaps skill-order keys for AZERTY + keyboard movement", async () => {
+      // AZERTY keeps E/R; keyboard movement moves Q→RMB and W→Shift (physical-position based).
+      renderWithKeys({
+        layout: "azerty",
+        custom: ["Q", "W", "E", "R"],
+        movementMode: "keyboard",
+      });
+
+      // skillOrder ["Q","W","E","Q","Q","R"] → RMB / Shift for the Q/W slots, E/R unchanged.
+      expect((await screen.findAllByText("RMB")).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Shift").length).toBeGreaterThan(0);
+      // Max priority names the ability identity (not the remapped keys): AZERTY Q/W/E → "AZE".
+      expect(screen.getByText("Max AZE")).toBeInTheDocument();
+    });
+
+    it("highlights the earliest unfulfilled box as the next point to spend", async () => {
+      // Q at rank 1 → the first box (Q) is taken; the next box in the plan (W) is "level up next".
+      renderWithKeys(
+        { layout: "qwerty", custom: ["Q", "W", "E", "R"], movementMode: "mouse" },
+        { q: 1, w: 0, e: 0, r: 0 },
+      );
+      expect(
+        await screen.findByLabelText(/level 2 — level up next/i),
+      ).toBeInTheDocument();
     });
   });
 
