@@ -10,6 +10,7 @@
 //! and snapshot tests run offline. A bad edit fails the build / a single test, not the running app.
 
 use crate::model::engine::{AbilitySlot, Archetype, DamageType, IntentTag, LiveSignal};
+use crate::model::gank::GankStyle;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -17,6 +18,8 @@ const CHAMPION_PROFILES_JSON: &str = include_str!("data/champion_profiles.json")
 const ITEM_INTENTS_JSON: &str = include_str!("data/item_intents.json");
 const COUNTERS_JSON: &str = include_str!("data/counters.json");
 const SKILL_ORDERS_JSON: &str = include_str!("data/skill_orders.json");
+const ABILITY_DAMAGE_JSON: &str = include_str!("data/ability_damage.json");
+const JUNGLE_TIMINGS_JSON: &str = include_str!("data/jungle_timings.json");
 
 /// A condition the enemy team can exhibit that pulls the build toward certain intent-tags. The
 /// engine derives the *active* set from a [`crate::model::TeamThreat`]; this enum is the join key
@@ -102,9 +105,35 @@ pub struct SkillPlan {
     pub max_order: Vec<AbilitySlot>,
 }
 
+/// Which live offensive stat a spell's ratio scales off (the durability estimator's ratio source).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RatioStat {
+    Ap,
+    Ad,
+}
+
+/// Approximate primary-nuke damage for the casts-to-kill ESTIMATE (advisory; see the JSON
+/// `_comment`). `base_by_rank` is the spell's approximate total base damage at ranks 1–5; `ratio`
+/// scales off `ratio_stat`. Deliberately approximate; adding a champion is an edit to the JSON.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AbilityDamage {
+    pub slot: AbilitySlot,
+    pub damage_type: DamageType,
+    pub ratio_stat: RatioStat,
+    pub ratio: f32,
+    pub base_by_rank: Vec<f32>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ChampionFile {
     champions: HashMap<String, ChampionProfile>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AbilityDamageFile {
+    champions: HashMap<String, AbilityDamage>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,6 +151,11 @@ struct CounterFile {
     counters: Vec<CounterRule>,
 }
 
+#[derive(Debug, Deserialize)]
+struct JungleTimingsFile {
+    junglers: HashMap<String, GankStyle>,
+}
+
 /// The parsed, in-memory rule set the engine queries. Built once via [`RuleSet::load`].
 #[derive(Debug, Clone)]
 pub struct RuleSet {
@@ -129,6 +163,9 @@ pub struct RuleSet {
     items: HashMap<u32, ItemIntent>,
     counters: Vec<CounterRule>,
     skill_orders: HashMap<String, SkillPlan>,
+    ability_damage: HashMap<String, AbilityDamage>,
+    /// Enemy-jungler gank-style by Live Client `championName`, for the gank-window alert.
+    jungle_timings: HashMap<String, GankStyle>,
 }
 
 impl RuleSet {
@@ -139,11 +176,15 @@ impl RuleSet {
         let items: ItemFile = serde_json::from_str(ITEM_INTENTS_JSON)?;
         let counters: CounterFile = serde_json::from_str(COUNTERS_JSON)?;
         let skills: SkillFile = serde_json::from_str(SKILL_ORDERS_JSON)?;
+        let ability_damage: AbilityDamageFile = serde_json::from_str(ABILITY_DAMAGE_JSON)?;
+        let jungle_timings: JungleTimingsFile = serde_json::from_str(JUNGLE_TIMINGS_JSON)?;
         Ok(Self {
             champions: champions.champions,
             items: items.items,
             counters: counters.counters,
             skill_orders: skills.champions,
+            ability_damage: ability_damage.champions,
+            jungle_timings: jungle_timings.junglers,
         })
     }
 
@@ -166,11 +207,28 @@ impl RuleSet {
     pub fn skill_plan(&self, name: &str) -> Option<&SkillPlan> {
         self.skill_orders.get(name)
     }
+
+    /// The approximate primary-nuke ability-damage record for a champion, if authored. Drives the
+    /// casts-to-kill estimate; `None` falls back to a raw-HP gauge with no cast count.
+    pub fn ability_damage(&self, name: &str) -> Option<&AbilityDamage> {
+        self.ability_damage.get(name)
+    }
+
+    /// The gank-style for an enemy jungler by Live Client `championName`, defaulting to
+    /// [`GankStyle::Standard`] for any champion not listed in `jungle_timings.json` — so the alert
+    /// stays purely data-driven and a new jungler is just a data edit.
+    pub fn gank_style(&self, champion: &str) -> GankStyle {
+        self.jungle_timings
+            .get(champion)
+            .copied()
+            .unwrap_or(GankStyle::Standard)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::gank::GankStyle;
 
     #[test]
     fn embedded_ruleset_parses() {
@@ -182,6 +240,22 @@ mod tests {
         assert_eq!(ahri.archetype, Archetype::BurstMage);
         assert!(ahri.build_graph.is_some());
         assert!(rules.champion("Zed").unwrap().build_graph.is_none());
+
+        // Ability-damage data loads for the casts-to-kill estimate.
+        let ahri_dmg = rules.ability_damage("Ahri").expect("Ahri ability damage");
+        assert_eq!(ahri_dmg.slot, AbilitySlot::Q);
+        assert_eq!(ahri_dmg.damage_type, DamageType::Magic);
+        assert_eq!(ahri_dmg.ratio_stat, RatioStat::Ap);
+        assert_eq!(ahri_dmg.base_by_rank.len(), 5);
+
+        // Jungle gank-style is data-driven: a listed champion maps, an unlisted one defaults.
+        assert_eq!(rules.gank_style("LeeSin"), GankStyle::Early);
+        assert_eq!(rules.gank_style("Karthus"), GankStyle::Farming);
+        assert_eq!(
+            rules.gank_style("Ahri"),
+            GankStyle::Standard,
+            "unlisted champion defaults to standard"
+        );
 
         // Items map intents and enemy signals.
         assert!(rules

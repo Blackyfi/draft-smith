@@ -9,6 +9,7 @@ pub mod champion;
 pub mod ddragon;
 pub mod engine;
 pub mod game;
+pub mod gank;
 pub mod item;
 pub mod meta;
 pub mod settings;
@@ -20,12 +21,17 @@ pub use engine::{
     AbilityRanks, BuildStep, EnemyThreatView, Recommendation, SwapSuggestion, TeamThreat,
     ThreatProfile,
 };
-// `FocusPriority`/`FocusTarget` are part of the typed FE↔Rust contract (carried inside
+// `FocusPriority`/`FocusTarget`/`ItemIntel` are part of the typed FE↔Rust contract (carried inside
 // `Recommendation`, mirrored in `src/types.ts`); the engine references them via
 // `crate::model::engine::*`, so the re-exports are contract surface, not yet named here.
 #[allow(unused_imports)]
-pub use engine::{FocusPriority, FocusTarget};
+pub use engine::{FocusPriority, FocusTarget, ItemIntel};
 pub use game::GameStateSummary;
+pub use gank::GankAlert;
+// `GankAlertKind`/`GankStyle` are part of the typed FE↔Rust `gank-alert` contract (mirrored in
+// `src/types.ts`), carried inside `GankAlert`; referenced elsewhere via their `gank::` path.
+#[allow(unused_imports)]
+pub use gank::{GankAlertKind, GankStyle};
 pub use item::ItemMeta;
 pub use meta::{MetaBuild, MetaItem, MetaItemOption};
 // `Aggressiveness`/`Theme` are part of the typed FE↔Rust settings contract (mirrored in

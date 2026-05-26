@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDdragonReady } from "@/hooks/useDdragonVersion";
 import { api } from "@/lib/tauri";
+import type { ItemMeta } from "@/types";
 
 /**
  * Resolves an item icon to a webview-loadable URL (downloaded lazily on a cache miss by the Rust
@@ -48,4 +49,24 @@ export function useChampionName(name: string | null | undefined): string {
     retry: false,
   });
   return data ?? name ?? "";
+}
+
+/**
+ * Fetches DDragon metadata for an item by id, including name, cost, tags, plaintext, and the
+ * stripped full description. Cached forever per id (DDragon data is immutable within a patch).
+ * Returns `undefined` while loading, `null` when the item is unknown. Gated on DDragon readiness
+ * so it never fires — or caches a `null` — before metadata exists.
+ */
+export function useItemMeta(itemId: number): {
+  data: ItemMeta | null | undefined;
+  isLoading: boolean;
+} {
+  const ready = useDdragonReady();
+  return useQuery<ItemMeta | null>({
+    queryKey: ["item-meta", itemId],
+    queryFn: () => api.getItemMeta(itemId),
+    enabled: ready,
+    staleTime: Infinity,
+    retry: false,
+  });
 }

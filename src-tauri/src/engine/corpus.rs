@@ -33,6 +33,8 @@ fn enemy(champion: &str, items: &[u32], k: u32, d: u32, a: u32) -> EnemyInput {
         kills: k,
         deaths: d,
         assists: a,
+        // The corpus injects no DDragon defenses, so durability is deterministically `None` here.
+        defenses: None,
     }
 }
 
@@ -67,6 +69,7 @@ fn jinx_vs_tank_frontline() {
         // skill-order logic is covered by `engine::skill` unit tests + the Ahri snapshot.
         self_level: 0,
         self_abilities: Default::default(),
+        self_stats: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Jinx");
@@ -90,6 +93,7 @@ fn sett_vs_heavy_healing_comp() {
         gold: 1400.0,
         self_level: 0,
         self_abilities: Default::default(),
+        self_stats: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Sett");
@@ -113,6 +117,7 @@ fn ornn_vs_ap_burst_comp() {
         gold: 1500.0,
         self_level: 0,
         self_abilities: Default::default(),
+        self_stats: Default::default(),
     };
     let rec = recommend(&input, &rules());
     assert_eq!(rec.self_champion, "Ornn");

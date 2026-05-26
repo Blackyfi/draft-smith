@@ -1,0 +1,9 @@
+{ "_comment": "Enemy jungler gank-style for the gank-window alert (advisory, data-driven prediction; the app never sees the map). 'early' = level-3 gankers (~2:45), 'standard' = full-clear then gank (~3:15), 'farming' = scaling junglers whose real gank threat is level 6. Unlisted champions default to 'standard'. Adding a champion is a data edit here.",
+  "junglers": {
+    "LeeSin": "early", "Elise": "early", "XinZhao": "early", "JarvanIV": "early", "RekSai": "early",
+    "Nidalee": "early", "Pantheon": "early", "Warwick": "early", "Rengar": "early", "Vi": "early",
+    "Karthus": "farming", "Kayn": "farming", "Evelynn": "farming", "Graves": "farming", "Hecarim": "farming",
+    "MasterYi": "farming", "Shyvana": "farming", "Lillia": "farming", "Fiddlesticks": "farming",
+    "Nocturne": "farming", "Belveth": "farming", "Udyr": "farming", "Kindred": "farming", "Nunu": "farming"
+  }
+}

@@ -127,11 +127,24 @@ pub struct Settings {
     /// Whether the Tier B "Meta" panel is shown beside the Tier A recommendation. Default on.
     #[serde(default = "default_show_meta_panel")]
     pub show_meta_panel: bool,
+    /// Whether the transient enemy-jungler gank-window alert is emitted. Default on. (Advisory
+    /// prediction from champion gank-style + level + clock — never map vision.)
+    #[serde(default = "default_true")]
+    pub gank_alerts_enabled: bool,
+    /// Whether the gank-window alert plays a sound. Default on.
+    #[serde(default = "default_true")]
+    pub gank_alert_sound: bool,
 }
 
 /// `#[serde(default)]` for a `bool` would yield `false`; the Meta panel ships on by default, so an
 /// upgrading user whose `settings.json` predates this field still sees it.
 fn default_show_meta_panel() -> bool {
+    true
+}
+
+/// Shared default for the gank-alert bool toggles, which ship on so an upgrading user whose
+/// `settings.json` predates these fields still gets the alerts.
+fn default_true() -> bool {
     true
 }
 
@@ -146,6 +159,8 @@ impl Default for Settings {
             ability_keys: AbilityKeys::default(),
             meta_rank: Rank::default(),
             show_meta_panel: true,
+            gank_alerts_enabled: true,
+            gank_alert_sound: true,
         }
     }
 }
@@ -229,6 +244,8 @@ mod tests {
         assert!(json.contains("\"rules-only\"")); // aggressiveness enum is kebab-case
         assert!(json.contains("\"metaRank\":\"diamond_plus\"")); // Tier B rank (§3.5)
         assert!(json.contains("\"showMetaPanel\":true"));
+        assert!(json.contains("\"gankAlertsEnabled\":true"));
+        assert!(json.contains("\"gankAlertSound\":true"));
         let back: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(s, back);
     }
@@ -261,5 +278,8 @@ mod tests {
         let s: Settings = serde_json::from_str(legacy).unwrap();
         assert_eq!(s.meta_rank, Rank::DiamondPlus);
         assert!(s.show_meta_panel);
+        // The gank-alert toggles also predate this legacy file and must default on.
+        assert!(s.gank_alerts_enabled);
+        assert!(s.gank_alert_sound);
     }
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// invariant (`.claude/rust.md`).
 ///
 /// Mirrors `ItemMeta` in `src/types.ts` (serde `camelCase`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ItemMeta {
     /// Numeric DDragon item ID (the map key; also carried here for convenience).
@@ -21,4 +21,15 @@ pub struct ItemMeta {
     /// Icon filename (DDragon `image.full`, e.g. `"1001.png"`); resolve to a cached path
     /// via [`crate::ddragon::icons`].
     pub image: String,
+    /// Concise one-line summary from DDragon `plaintext`; may be empty.
+    pub plaintext: String,
+    /// Readable stats/passives: DDragon `description` HTML stripped to plain text with line breaks; may be empty.
+    pub description: String,
+    /// Flat health the item grants (DDragon `stats.FlatHPPoolMod`); 0.0 when none. Feeds the
+    /// durability estimator's enemy-HP sum (raw CDN number, no engine logic).
+    pub flat_hp: f32,
+    /// Flat armor the item grants (DDragon `stats.FlatArmorMod`); 0.0 when none.
+    pub flat_armor: f32,
+    /// Flat magic resist the item grants (DDragon `stats.FlatSpellBlockMod`); 0.0 when none.
+    pub flat_mr: f32,
 }

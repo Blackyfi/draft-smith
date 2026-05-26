@@ -35,6 +35,34 @@ export interface GameStateSummary {
 }
 
 /**
+ * Mirrors `IntentTag` in `src-tauri/src/model/item.rs` (serde `snake_case`).
+ * Abstract intent labels produced by the engine's item classifier — what an item *does* at a
+ * strategic level. "unknown" is filtered out by Rust before emission; the FE skips it anyway.
+ */
+export type IntentTag =
+  | "magic_pen_flat"
+  | "magic_pen_percent"
+  | "armor_pen_flat"
+  | "armor_pen_percent"
+  | "burst_amp"
+  | "stasis_survival"
+  | "spellshield"
+  | "antiheal"
+  | "percent_hp_damage"
+  | "ability_haste"
+  | "armor_self"
+  | "mr_self"
+  | "health_self"
+  | "move_speed"
+  | "lifesteal"
+  | "omnivamp"
+  | "crit"
+  | "on_hit"
+  | "lethality"
+  | "sustain"
+  | "unknown";
+
+/**
  * Mirrors `ItemMeta` in `src-tauri/src/model/item.rs` (serde `camelCase`).
  * Raw Data Dragon metadata — no engine logic; intent-tags live in the Rust `rules/data`.
  */
@@ -47,6 +75,16 @@ export interface ItemMeta {
   tags: string[];
   /** Icon filename (DDragon `image.full`, e.g. "1001.png"). */
   image: string;
+  /** Short description (DDragon `plaintext`). */
+  plaintext: string;
+  /** Full stripped description (DDragon `description` with HTML tags removed). */
+  description: string;
+  /** Flat HP granted by the item (DDragon `stats.FlatHPPoolMod`). */
+  flatHp: number;
+  /** Flat armor granted by the item (DDragon `stats.FlatArmorMod`). */
+  flatArmor: number;
+  /** Flat magic resistance granted by the item (DDragon `stats.FlatSpellBlockMod`). */
+  flatMr: number;
 }
 
 /**
@@ -108,6 +146,38 @@ export interface SwapSuggestion {
 }
 
 /**
+ * Mirrors `ResistKind` in `src-tauri/src/model/engine.rs` (serde `kebab-case`).
+ * Which resistance type is relevant for the durability estimate against the player's damage.
+ */
+export type ResistKind = "armor" | "magic" | "none";
+
+/**
+ * Mirrors `Durability` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * Estimated durability of an enemy vs the player's damage type. This is an approximation:
+ * it excludes enemy runes and is calculated from full HP.
+ */
+export interface Durability {
+  /** Effective HP factoring in the relevant resistance (after pen). */
+  effectiveHp: number;
+  /** Raw HP pool. */
+  rawHp: number;
+  /** The resistance value (armor or MR) before pen. */
+  resist: number;
+  /** The resistance value after the player's penetration is applied. */
+  resistAfterPen: number;
+  /** Which resistance dimension is relevant ("armor" | "magic" | "none"). */
+  resistKind: ResistKind;
+  /** Estimated number of full casts of the primary burst ability to kill from full HP. */
+  castsToKill: number | null;
+  /** Which ability slot provides the burst damage estimate. */
+  abilitySlot: AbilitySlot | null;
+  /** Display name of the ability (from the Live Client), or null when unavailable. */
+  abilityName: string | null;
+  /** Estimated damage per cast used for the calculation. */
+  perCastDamage: number | null;
+}
+
+/**
  * Mirrors `EnemyThreatView` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
  * One enemy row for the threat board.
  */
@@ -115,6 +185,30 @@ export interface EnemyThreatView {
   champion: string;
   archetype: Archetype;
   signals: LiveSignal[];
+  /** Owned item ids in slot order; empty until the enemy buys something. */
+  items: number[];
+  /** Durability estimate vs the player's damage, or null when not yet computed. */
+  durability: Durability | null;
+}
+
+/**
+ * Mirrors `ItemIntel` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
+ * Enriched view of an enemy-owned item: what it does, who owns it, and whether it counters the
+ * player's champion. Emitted as part of `Recommendation.enemyItems`.
+ */
+export interface ItemIntel {
+  id: number;
+  name: string;
+  /** Strategic intent tags (what the item does); "unknown" already filtered out by Rust. */
+  intents: IntentTag[];
+  /** Enemy Live Client championNames who own this item, deduped, first-seen order. */
+  owners: string[];
+  /** True when the item specifically counters the player's champion/archetype. */
+  countersYou: boolean;
+  /** Short explanation of why it counters you, or null. */
+  countersYouReason: string | null;
+  /** Actionable hint for how to play around it, or null. */
+  counterHint: string | null;
 }
 
 /**
@@ -187,6 +281,8 @@ export interface Recommendation {
   skill: SkillAdvice | null;
   /** The player's current ability ranks (Q/W/E/R) for live skill-order progress. */
   abilityRanks: AbilityRanks;
+  /** Enriched intel for every item the enemies own; ordered by strategic relevance. */
+  enemyItems: ItemIntel[];
 }
 
 /**
@@ -250,6 +346,37 @@ export interface Settings {
   metaRank: Rank;
   /** Whether the Meta panel is shown beside the Adapt panel in-game (default: true). */
   showMetaPanel: boolean;
+  /** Whether to show the jungle gank window overlay alert (default: true). */
+  gankAlertsEnabled: boolean;
+  /** Whether to play a short sound when a gank alert fires (default: true). */
+  gankAlertSound: boolean;
+}
+
+/**
+ * Mirrors `GankStyle` in `src-tauri/src/model/gank.rs` (serde `kebab-case`).
+ * The jungler's general playstyle this game — informs the urgency/copy of the alert.
+ */
+export type GankStyle = "early" | "standard" | "farming";
+
+/**
+ * Mirrors `GankAlertKind` in `src-tauri/src/model/gank.rs` (serde `kebab-case`).
+ * What triggered the gank window alert.
+ */
+export type GankAlertKind = "first-gank" | "ultimate";
+
+/**
+ * Mirrors `GankAlert` in `src-tauri/src/model/gank.rs` (serde `camelCase`).
+ * Payload of the transient `gank-alert` Tauri event emitted by the Rust poller when the enemy
+ * jungler hits a gank-relevant moment. Resolved display name + icon are handled FE-side from the
+ * Live Client `championName` (the DDragon id).
+ */
+export interface GankAlert {
+  /** Live Client championName (DDragon id, e.g. "MasterYi"). Resolve icon + display name FE-side. */
+  jungler: string;
+  kind: GankAlertKind;
+  style: GankStyle;
+  /** Short, human-readable message from Rust (e.g. "Just hit level 6 — ult is up"). */
+  message: string;
 }
 
 /**

@@ -99,6 +99,7 @@ mod tests {
             kills: 4,
             deaths: 2,
             assists: 2,
+            defenses: None,
         };
         let p = classify_enemy(&zed, &rules());
         assert_eq!(p.archetype, Archetype::Assassin);
@@ -117,6 +118,7 @@ mod tests {
             kills: 1,
             deaths: 1,
             assists: 8,
+            defenses: None,
         };
         let p = classify_enemy(&ornn, &rules());
         assert_eq!(p.archetype, Archetype::Tank);

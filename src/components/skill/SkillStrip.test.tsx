@@ -52,6 +52,8 @@ const QWERTY_SETTINGS: Settings = {
   },
   metaRank: "diamond_plus",
   showMetaPanel: true,
+  gankAlertsEnabled: true,
+  gankAlertSound: true,
 };
 
 const AZERTY_SETTINGS: Settings = {
@@ -95,6 +97,7 @@ const REC_WITH_SKILL_NOW: Recommendation = {
     reason: "Max Q first for poke damage",
   },
   abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
+  enemyItems: [],
 };
 
 const REC_WITH_SKILL_LOOKAHEAD: Recommendation = {
@@ -111,6 +114,7 @@ const REC_WITH_SKILL_LOOKAHEAD: Recommendation = {
     reason: "Level W second after Q max",
   },
   abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
+  enemyItems: [],
 };
 
 const REC_NO_SKILL: Recommendation = {
@@ -121,6 +125,7 @@ const REC_NO_SKILL: Recommendation = {
   focus: [],
   skill: null,
   abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
+  enemyItems: [],
 };
 
 // ---------- Helpers ----------

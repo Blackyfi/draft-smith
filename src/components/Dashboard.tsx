@@ -5,24 +5,27 @@ import { MetaPanel } from "@/components/build/MetaPanel";
 import { SkillStrip } from "@/components/skill/SkillStrip";
 import { Connecting } from "@/components/states/Connecting";
 import { SwapStrip } from "@/components/swaps/SwapStrip";
+import { EnemyItemsPanel } from "@/components/threat/EnemyItemsPanel";
 import { EnemyThreatBoard } from "@/components/threat/EnemyThreatBoard";
 import { FocusCallout } from "@/components/threat/FocusCallout";
 import { useSettings } from "@/hooks/useSettings";
 import type { Rank, Recommendation } from "@/types";
 
 /**
- * The in-game dashboard (PROJECT_SPEC §6.3): build path, enemy threat board, situational swaps.
+ * The in-game dashboard (PROJECT_SPEC §6.3): build path, enemy threat board, situational swaps,
+ * and the enemy items reference panel.
  *
  * When we're in a game but the engine hasn't produced a recommendation yet (the local player isn't
  * identifiable for a beat), we show the connecting skeleton rather than an empty frame. Once a
  * recommendation exists but no enemy has revealed an item-derived signal, we surface the early
  * "watching enemy buys" hint (PROJECT_SPEC §6.4, in-game-early).
  *
- * Layout (PROJECT_SPEC §6.3): two columns on wider windows so the app grows horizontally instead
- * of getting ever taller. The **left** column holds the build-decision content (skill order, the
- * Adapt build path, and the Meta panel); the **right** column holds the situational/awareness
- * content (who to focus, the enemy threat board, situational swaps). Below `md` it collapses to a
- * single stacked column so the compact overlay / minimum-width window still works.
+ * Layout: three columns on xl+ windows, two columns on md, one on narrow/overlay.
+ *  - Column 1 (left): build-decision content — skill order, Adapt build path, Meta panel.
+ *  - Column 2 (middle): situational/awareness content — focus targets, threat board, swaps.
+ *  - Column 3 (right): enemy items reference panel.
+ * At md (2-col), the items panel spans both columns so it renders full-width below the other two
+ * rather than being orphaned in a half-row. At xl+ it takes its own column.
  */
 export function Dashboard({
   recommendation,
@@ -41,8 +44,8 @@ export function Dashboard({
   const metaRank: Rank = settings?.metaRank ?? "diamond_plus";
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 p-3 md:grid-cols-2">
-      {/* Left column — what to build. */}
+    <div className="grid grid-cols-1 items-start gap-5 p-3 md:grid-cols-2 xl:grid-cols-3">
+      {/* Column 1 — what to build. */}
       <div className="flex min-w-0 flex-col gap-5">
         <SkillStrip />
         <BuildNext buildPath={recommendation.buildPath} />
@@ -62,11 +65,21 @@ export function Dashboard({
         )}
       </div>
 
-      {/* Right column — who to fight. */}
+      {/* Column 2 — who to fight. */}
       <div className="flex min-w-0 flex-col gap-5">
         <FocusCallout />
         <EnemyThreatBoard threats={recommendation.threats} />
         <SwapStrip swaps={recommendation.swaps} />
+      </div>
+
+      {/* Column 3 — enemy items reference.
+          At md (2-col) this spans both columns so it stacks cleanly below rather than being
+          orphaned. At xl+ it lives in its own third column. */}
+      <div className="flex min-w-0 flex-col gap-5 md:col-span-2 xl:col-span-1">
+        <EnemyItemsPanel
+          threats={recommendation.threats}
+          enemyItems={recommendation.enemyItems}
+        />
       </div>
     </div>
   );

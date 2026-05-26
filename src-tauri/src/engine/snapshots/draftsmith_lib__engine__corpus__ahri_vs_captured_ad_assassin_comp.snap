@@ -42,6 +42,10 @@ threats:
       - fed
       - lethality
       - mobility
+    items:
+      - 6692
+      - 3158
+    durability: ~
   - champion: Darius
     archetype: juggernaut
     signals:
@@ -49,19 +53,97 @@ threats:
       - has-sustain
       - armor-stacking
       - hard-cc
+    items:
+      - 6630
+      - 3047
+    durability: ~
   - champion: Vi
     archetype: bruiser
     signals:
       - hard-cc
       - mobility
+    items:
+      - 3071
+    durability: ~
   - champion: Kaisa
     archetype: marksman
     signals:
       - mobility
+    items:
+      - 3124
+    durability: ~
   - champion: Leona
     archetype: catcher
     signals:
       - hard-cc
+    items:
+      - 3869
+    durability: ~
+enemyItems:
+  - id: 6692
+    name: Eclipse
+    intents:
+      - lethality
+    owners:
+      - Zed
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with armor or a stasis item.
+  - id: 3158
+    name: Ionian Boots of Lucidity
+    intents:
+      - ability_haste
+    owners:
+      - Zed
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 6630
+    name: Goredrinker
+    intents:
+      - omnivamp
+      - sustain
+    owners:
+      - Darius
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with anti-heal (Grievous Wounds).
+  - id: 3047
+    name: Plated Steelcaps
+    intents:
+      - armor_self
+    owners:
+      - Darius
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with armor penetration.
+  - id: 3071
+    name: Black Cleaver
+    intents:
+      - armor_pen_percent
+      - health_self
+    owners:
+      - Vi
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 3124
+    name: "Guinsoo's Rageblade"
+    intents:
+      - on_hit
+    owners:
+      - Kaisa
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
+  - id: 3869
+    name: Celestial Opposition
+    intents: []
+    owners:
+      - Leona
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
 focus:
   - champion: Zed
     priority: primary

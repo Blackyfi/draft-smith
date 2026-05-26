@@ -8,14 +8,18 @@
 //! the recommendation: the roster, each player's level, and their owned items. Gold and the clock
 //! are excluded by construction. M3/M4 hang the actual recompute off this same change signal.
 
+mod gank;
+
+use crate::engine::input::ResolvedDefenses;
 use crate::engine::{self, EngineInput};
 use crate::live_client::model::AllGameData;
 use crate::live_client::LiveClient;
 use crate::model::settings::{MAX_POLL_INTERVAL_SECS, MIN_POLL_INTERVAL_SECS};
-use crate::model::{ConnectionStatus, GameStateSummary, Recommendation};
+use crate::model::{ConnectionStatus, GameStateSummary, GankAlert, Recommendation};
 use crate::rules::RuleSet;
-use crate::state::{LiveState, SettingsState};
+use crate::state::{DdragonState, LiveState, SettingsState};
 use crate::tray;
+use gank::GankAlertState;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -85,6 +89,30 @@ fn summarize(data: &AllGameData) -> GameStateSummary {
     }
 }
 
+/// Finds the enemy jungler and runs the pure gank evaluator against it, returning any alert to
+/// fire this tick. The jungler is identified by Smite (the only Riot-sanctioned role signal we
+/// have), falling back to a `JUNGLE` position. Champion gank-style comes from the data-driven rule
+/// set — no champion name is branched on here.
+fn detect_gank(
+    data: &AllGameData,
+    rules: &RuleSet,
+    gank_state: &mut GankAlertState,
+) -> Option<GankAlert> {
+    let enemies = data.enemies();
+    let jungler = enemies
+        .iter()
+        .find(|p| p.has_smite())
+        .or_else(|| enemies.iter().find(|p| p.position == "JUNGLE"))?;
+    let style = rules.gank_style(&jungler.champion_name);
+    gank::evaluate(
+        &jungler.champion_name,
+        style,
+        jungler.level,
+        data.game_data.game_time,
+        gank_state,
+    )
+}
+
 /// An effect the poller wants to surface to the frontend. `run_loop` maps these onto Tauri
 /// events; keeping them as a plain enum is what lets [`poll_once`] be tested without a Tauri app
 /// (the `test` runtime won't link on Windows).
@@ -96,6 +124,10 @@ enum PollEvent {
     GameStateChanged(GameStateSummary),
     /// `recommendation-updated` — emitted alongside a state change once the engine recomputes.
     RecommendationUpdated(Recommendation),
+    /// `gank-alert` — a transient one-shot enemy-jungler gank-window prediction. Fired off the
+    /// per-poll gank evaluator (not the diff branch), since a pure time threshold can be crossed
+    /// with no roster/level change.
+    GankAlert(GankAlert),
 }
 
 /// Spawns the poll loop on the async runtime. Returns immediately; the loop runs for the life of
@@ -160,18 +192,32 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
         PollEvent::RecommendationUpdated(rec) => {
             let _ = app.emit("recommendation-updated", &rec);
         }
+        PollEvent::GankAlert(alert) => {
+            let _ = app.emit("gank-alert", &alert);
+        }
     };
 
     // Announce we're attempting to connect before the first probe.
     transition(&state, ConnectionStatus::Connecting, &mut emit);
     let mut last_signature: Option<StateSignature> = None;
+    // One-shot gank-alert tracker for the current game; reset on the no-game branch so a new game
+    // re-arms both windows.
+    let mut gank_state = GankAlertState::default();
 
     loop {
+        // Read the gank-alert toggle live each iteration so a settings change takes effect at once.
+        let gank_enabled = app
+            .try_state::<SettingsState>()
+            .map(|s| s.current().gank_alerts_enabled)
+            .unwrap_or(true);
         poll_once(
             &client,
             &state,
             rules.as_ref(),
+            Some(&*app.state::<DdragonState>()),
             &mut last_signature,
+            gank_enabled,
+            &mut gank_state,
             &mut emit,
         )
         .await;
@@ -185,11 +231,15 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
 /// snapshot and emits `game-state-changed`. Leaving a game clears the snapshot and signature so a
 /// later game starts clean. Effects flow through [`LiveState`] and the `emit` sink; nothing is
 /// returned. No Tauri coupling, so tests can drive it directly.
+#[allow(clippy::too_many_arguments)]
 async fn poll_once(
     client: &LiveClient,
     state: &LiveState,
     rules: Option<&RuleSet>,
+    ddragon: Option<&DdragonState>,
     last_signature: &mut Option<StateSignature>,
+    gank_enabled: bool,
+    gank_state: &mut GankAlertState,
     // `+ Send`: the loop future is spawned on the async runtime, which requires `Send`, and this
     // reference is held across the `.await` below.
     emit: &mut (dyn FnMut(PollEvent) + Send),
@@ -197,6 +247,16 @@ async fn poll_once(
     match client.all_game_data().await {
         Ok(data) => {
             transition(state, ConnectionStatus::InGame, emit);
+            // Gank detection runs EVERY poll (not just on the diff branch): a pure time threshold
+            // can be crossed without any roster/level change. Skipped if disabled or rules are
+            // unavailable (gank-style is data-driven).
+            if gank_enabled {
+                if let Some(rules) = rules {
+                    if let Some(alert) = detect_gank(&data, rules, gank_state) {
+                        emit(PollEvent::GankAlert(alert));
+                    }
+                }
+            }
             let signature = StateSignature::from_data(&data);
             let changed = last_signature.as_ref() != Some(&signature);
             if changed {
@@ -204,10 +264,27 @@ async fn poll_once(
                 emit(PollEvent::GameStateChanged(summarize(&data)));
                 // Recompute only on a meaningful change (PROJECT_SPEC §5.2 step 7). Skipped if the
                 // rule set failed to load or the local player isn't identifiable yet.
-                if let Some(rec) = rules
+                if let Some((rules, mut input)) = rules
                     .and_then(|rules| EngineInput::from_all_game_data(&data).map(|i| (rules, i)))
-                    .map(|(rules, input)| engine::recommend(&input, rules))
                 {
+                    // Resolve enemy defenses from DDragon and inject them so the engine can estimate
+                    // durability. Done only here on the `changed` branch (not per poll), and only
+                    // when DDragon data is present — the no-DDragon path leaves defenses `None`.
+                    if let Some(ddragon) = ddragon {
+                        if let Some(resolved) = ddragon.data.read().await.clone() {
+                            for enemy in &mut input.enemies {
+                                if let Some((hp, armor, mr)) = crate::ddragon::enemy_defenses(
+                                    &enemy.champion,
+                                    enemy.level,
+                                    &enemy.items,
+                                    &resolved,
+                                ) {
+                                    enemy.defenses = Some(ResolvedDefenses { hp, armor, mr });
+                                }
+                            }
+                        }
+                    }
+                    let rec = engine::recommend(&input, rules);
                     *state.recommendation.write().await = Some(rec.clone());
                     emit(PollEvent::RecommendationUpdated(rec));
                 }
@@ -216,8 +293,10 @@ async fn poll_once(
         }
         Err(err) if err.is_no_game() => {
             transition(state, ConnectionStatus::NoGame, emit);
-            // Leaving a game invalidates the last snapshot/signature/recommendation.
+            // Leaving a game invalidates the last snapshot/signature/recommendation, and re-arms
+            // the one-shot gank alerts for the next game.
             *last_signature = None;
+            *gank_state = GankAlertState::default();
             *state.snapshot.write().await = None;
             *state.recommendation.write().await = None;
         }
@@ -343,10 +422,18 @@ mod tests {
 
         let rules = RuleSet::load().unwrap();
         let mut sig = None;
+        let mut gank = GankAlertState::default();
         let mut events = Vec::new();
-        poll_once(&client, &state, Some(&rules), &mut sig, &mut |e| {
-            events.push(e)
-        })
+        poll_once(
+            &client,
+            &state,
+            Some(&rules),
+            None,
+            &mut sig,
+            false,
+            &mut gank,
+            &mut |e| events.push(e),
+        )
         .await;
 
         assert_eq!(*state.status.lock().unwrap(), ConnectionStatus::InGame);
@@ -384,6 +471,7 @@ mod tests {
             build_path: Vec::new(),
             swaps: Vec::new(),
             threats: Vec::new(),
+            enemy_items: Vec::new(),
             focus: Vec::new(),
             skill: None,
             ability_ranks: Default::default(),
@@ -392,7 +480,22 @@ mod tests {
 
         // Nothing listening → connection refused → the benign "no game" path.
         let client = LiveClient::with_base("http://127.0.0.1:1").unwrap();
-        poll_once(&client, &state, None, &mut sig, &mut |_| {}).await;
+        // Pretend the previous game already fired both gank alerts; the no-game branch must re-arm.
+        let mut gank = GankAlertState {
+            first_fired: true,
+            six_fired: true,
+        };
+        poll_once(
+            &client,
+            &state,
+            None,
+            None,
+            &mut sig,
+            false,
+            &mut gank,
+            &mut |_| {},
+        )
+        .await;
 
         assert_eq!(*state.status.lock().unwrap(), ConnectionStatus::NoGame);
         assert!(
@@ -404,6 +507,59 @@ mod tests {
             state.recommendation.read().await.is_none(),
             "recommendation cleared when the game ends"
         );
+        assert!(
+            !gank.first_fired && !gank.six_fired,
+            "gank alerts re-armed when the game ends"
+        );
+    }
+
+    #[tokio::test]
+    async fn poll_once_emits_gank_alert_for_smite_jungler_past_threshold() {
+        // A synthetic in-game payload: we (Ahri, ORDER) plus an enemy Lee Sin jungler (CHAOS) with
+        // Smite, at level 3 and 2:40 — past the early-ganker first-gank threshold.
+        let body = r#"{
+            "activePlayer": { "riotIdGameName": "Me" },
+            "allPlayers": [
+                { "championName": "Ahri", "riotId": "Me#EUW", "team": "ORDER" },
+                { "championName": "LeeSin", "riotId": "Enemy#EUW", "team": "CHAOS", "level": 3,
+                  "summonerSpells": {
+                      "summonerSpellOne": { "displayName": "Flash" },
+                      "summonerSpellTwo": { "displayName": "Smite" } } }
+            ],
+            "gameData": { "gameMode": "CLASSIC", "gameTime": 160.0 }
+        }"#;
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(ALL_GAME_DATA_PATH))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let state = LiveState::default();
+        let client = LiveClient::with_base(server.uri()).unwrap();
+        let rules = RuleSet::load().unwrap();
+        let mut sig = None;
+        let mut gank = GankAlertState::default();
+        let mut events = Vec::new();
+        poll_once(
+            &client,
+            &state,
+            Some(&rules),
+            None,
+            &mut sig,
+            true,
+            &mut gank,
+            &mut |e| events.push(e),
+        )
+        .await;
+
+        let alert = events.iter().find_map(|e| match e {
+            PollEvent::GankAlert(a) => Some(a),
+            _ => None,
+        });
+        let alert = alert.expect("a gank alert fires for the Smite jungler past the threshold");
+        assert_eq!(alert.jungler, "LeeSin");
+        assert!(gank.first_fired, "the first-gank window is consumed");
     }
 
     #[tokio::test]
@@ -415,16 +571,23 @@ mod tests {
         let mut status_emits = 0;
         let mut summary_emits = 0;
         let mut sig = None;
+        let mut gank = GankAlertState::default();
         {
             let mut count = |e: PollEvent| match e {
                 PollEvent::ConnectionStatus(_) => status_emits += 1,
                 PollEvent::GameStateChanged(_) => summary_emits += 1,
-                PollEvent::RecommendationUpdated(_) => {}
+                PollEvent::RecommendationUpdated(_) | PollEvent::GankAlert(_) => {}
             };
             // Two identical in-game polls: status transitions once (NoGame→InGame), and the diff
             // signature is unchanged on the second poll, so the summary fires only once.
-            poll_once(&client, &state, None, &mut sig, &mut count).await;
-            poll_once(&client, &state, None, &mut sig, &mut count).await;
+            poll_once(
+                &client, &state, None, None, &mut sig, false, &mut gank, &mut count,
+            )
+            .await;
+            poll_once(
+                &client, &state, None, None, &mut sig, false, &mut gank, &mut count,
+            )
+            .await;
         }
 
         assert_eq!(

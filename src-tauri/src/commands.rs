@@ -7,7 +7,7 @@ use crate::ddragon::{
 use crate::meta::{self, cache::MetaCache, fetch::MetaFetcher};
 use crate::model::settings::DEFAULT_LOCALE;
 use crate::model::{
-    ChampionMeta, ConnectionStatus, DdragonStatus, MetaBuild, Recommendation, Settings,
+    ChampionMeta, ConnectionStatus, DdragonStatus, ItemMeta, MetaBuild, Recommendation, Settings,
 };
 use crate::state::{DdragonState, LiveState, MetaState, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
@@ -174,6 +174,18 @@ pub async fn get_champion_meta(
     Ok(guard
         .as_ref()
         .and_then(|data| data.champions.by_key(key).cloned()))
+}
+
+/// Looks up resolved DDragon metadata for an item by its numeric id (name, cost, tags, and the
+/// human-readable `plaintext`/`description` text). Returns `Ok(None)` when DDragon data has not
+/// loaded yet or the id is unknown — display data only, no network.
+#[tauri::command]
+pub async fn get_item_meta(
+    id: u32,
+    state: State<'_, DdragonState>,
+) -> Result<Option<ItemMeta>, String> {
+    let guard = state.data.read().await;
+    Ok(guard.as_ref().and_then(|data| data.items.get(&id).cloned()))
 }
 
 /// Resolves an item icon to an on-disk path, downloading it lazily on a cache miss.

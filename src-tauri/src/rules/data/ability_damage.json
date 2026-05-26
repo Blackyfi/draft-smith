@@ -1,0 +1,15 @@
+{
+  "_comment": "Approximate primary-nuke damage for the casts-to-kill ESTIMATE (PROJECT_SPEC advisory). baseByRank is the spell's approximate total base damage at ranks 1-5; ratio scales off the named stat. Deliberately approximate and freely editable - adding a champion is a data edit here.",
+  "champions": {
+    "Ahri":   { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.40, "baseByRank": [40, 65, 90, 115, 140] },
+    "Syndra": { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.70, "baseByRank": [70, 105, 140, 175, 210] },
+    "Veigar": { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.70, "baseByRank": [80, 120, 160, 200, 240] },
+    "Annie":  { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.80, "baseByRank": [80, 115, 150, 185, 220] },
+    "Lux":    { "slot": "E", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.60, "baseByRank": [70, 120, 170, 220, 270] },
+    "Brand":  { "slot": "W", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.55, "baseByRank": [75, 120, 165, 210, 255] },
+    "Zed":    { "slot": "Q", "damageType": "physical", "ratioStat": "ad", "ratio": 1.00, "baseByRank": [80, 115, 150, 185, 220] },
+    "Diana":  { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.70, "baseByRank": [60, 95, 130, 165, 200] },
+    "Ekko":   { "slot": "Q", "damageType": "magic",    "ratioStat": "ap", "ratio": 0.30, "baseByRank": [60, 80, 100, 120, 140] },
+    "Sett":   { "slot": "W", "damageType": "physical", "ratioStat": "ad", "ratio": 0.10, "baseByRank": [60, 90, 120, 150, 180] }
+  }
+}

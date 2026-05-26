@@ -17,6 +17,7 @@ function rec(
     swaps: [],
     threats,
     focus: [],
+    enemyItems: [],
     skill: null,
     abilityRanks: { q: 0, w: 0, e: 0, r: 0 },
   };
@@ -26,6 +27,8 @@ const ZED_LETHAL: EnemyThreatView = {
   champion: "Zed",
   archetype: "assassin",
   signals: ["lethality"],
+  items: [],
+  durability: null,
 };
 
 describe("diffRecommendation", () => {
@@ -69,14 +72,20 @@ describe("diffRecommendation", () => {
       [step(3157, "Zhonya's Hourglass")],
       [
         { ...ZED_LETHAL, signals: [] },
-        { champion: "Vi", archetype: "bruiser", signals: [] },
+        { champion: "Vi", archetype: "bruiser", signals: [], items: [], durability: null },
       ],
     );
     const next = rec(
       [step(3135, "Void Staff")],
       [
         ZED_LETHAL,
-        { champion: "Vi", archetype: "bruiser", signals: ["mr-stacking"] },
+        {
+          champion: "Vi",
+          archetype: "bruiser",
+          signals: ["mr-stacking"],
+          items: [],
+          durability: null,
+        },
       ],
     );
 

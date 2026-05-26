@@ -43,6 +43,30 @@ pub enum LoadOutcome {
     Offline,
 }
 
+/// Resolves an enemy's estimated defensive stats — base HP/armor/MR at their level plus the flat
+/// HP/armor/MR from the items they own — for the durability / casts-to-kill estimate.
+///
+/// Returns `(hp, armor, mr)`, or `None` if the champion's base stats are unknown. A plain tuple so
+/// the engine has no dependency on a DDragon type (the poller maps it onto `ResolvedDefenses`).
+/// An at-a-glance estimate: it excludes the enemy's runes, current HP, and level passives, none of
+/// which a Riot-sanctioned source exposes.
+pub fn enemy_defenses(
+    name_or_id: &str,
+    level: u32,
+    items: &[u32],
+    data: &ResolvedData,
+) -> Option<(f32, f32, f32)> {
+    let (mut hp, mut armor, mut mr) = data.champions.base_stats(name_or_id)?.at_level(level);
+    for &id in items {
+        if let Some(item) = data.items.get(&id) {
+            hp += item.flat_hp;
+            armor += item.flat_armor;
+            mr += item.flat_mr;
+        }
+    }
+    Some((hp, armor, mr))
+}
+
 /// Loads and parses both core blobs from the cache. Errors with [`DdragonError::NoCache`] if the
 /// blobs (or version marker) are absent.
 pub fn load_from_cache(cache: &DdragonCache) -> Result<ResolvedData> {

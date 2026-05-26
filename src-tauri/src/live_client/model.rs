@@ -37,6 +37,26 @@ pub struct ActivePlayer {
     /// Current ability ranks + names, used by the skill-order coach. Absent on some partial
     /// payloads (defaults to all-zero ranks), so never assume it's populated.
     pub abilities: Abilities,
+    /// The active player's live offensive stats, used by the durability / casts-to-kill estimator.
+    /// Absent on partial payloads (defaults to all-zero), so never assume it's populated.
+    pub champion_stats: ChampionStats,
+}
+
+/// The active player's live offensive stats from `/activeplayer` (`championStats`), the inputs to
+/// the durability / casts-to-kill estimate. Defensively defaulted to zero throughout.
+///
+/// The Live Client reports the two `*_percent` pen values as fractions in `0.0..=1.0`, and the flat
+/// pen already folds in lethality-derived armor pen, so these map straight onto the estimator's
+/// inputs with no conversion.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ChampionStats {
+    pub ability_power: f32,
+    pub attack_damage: f32,
+    pub magic_penetration_flat: f32,
+    pub magic_penetration_percent: f32,
+    pub armor_penetration_flat: f32,
+    pub armor_penetration_percent: f32,
 }
 
 /// The active player's four abilities, keyed by their fixed **slots** (`Q`/`W`/`E`/`R` = 1st/2nd/
@@ -87,6 +107,25 @@ pub struct Player {
     /// Owned items (the live build, the heart of the recommendation input).
     pub items: Vec<Item>,
     pub scores: Scores,
+    /// The player's two summoner spells. Used to identify the enemy jungler (the one with Smite)
+    /// for the gank-window alert. Defensively defaulted, so a partial payload never panics.
+    pub summoner_spells: SummonerSpells,
+}
+
+/// A player's two summoner spells, as reported by the Live Client (`summonerSpells`).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SummonerSpells {
+    pub summoner_spell_one: SummonerSpell,
+    pub summoner_spell_two: SummonerSpell,
+}
+
+/// One summoner spell slot; only its display name is needed (e.g. `"Smite"`, `"Flash"`).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SummonerSpell {
+    /// Display name (locale-dependent), straight from the Live Client.
+    pub display_name: String,
 }
 
 /// One owned item slot.
@@ -184,6 +223,15 @@ impl Player {
             && self.riot_id_game_name() == other.riot_id_game_name())
             || (!other.summoner_name.is_empty() && self.summoner_name == other.summoner_name)
     }
+
+    /// Whether this player has Smite on either summoner-spell slot (case-insensitive). The signal
+    /// the gank-window alert uses to identify the enemy jungler, since the Live Client never
+    /// exposes the map or a "role" beyond the (often empty) `position` field.
+    pub fn has_smite(&self) -> bool {
+        let has = |s: &SummonerSpell| s.display_name.to_lowercase().contains("smite");
+        has(&self.summoner_spells.summoner_spell_one)
+            || has(&self.summoner_spells.summoner_spell_two)
+    }
 }
 
 #[cfg(test)]
@@ -240,6 +288,26 @@ mod tests {
         assert_eq!(data.game_data.game_time, 0.0);
         assert!(data.self_player().is_none());
         assert!(data.enemies().is_empty());
+    }
+
+    #[test]
+    fn detects_smite_jungler() {
+        // A player carrying Smite (in either slot, any casing) is detected as the jungler.
+        let json = r#"{ "allPlayers": [
+            { "championName": "LeeSin", "summonerSpells": {
+                "summonerSpellOne": { "displayName": "Flash" },
+                "summonerSpellTwo": { "displayName": "Smite" } } },
+            { "championName": "Ahri", "summonerSpells": {
+                "summonerSpellOne": { "displayName": "Flash" },
+                "summonerSpellTwo": { "displayName": "Ignite" } } }
+        ] }"#;
+        let data: AllGameData = serde_json::from_str(json).unwrap();
+        assert!(data.all_players[0].has_smite(), "Lee Sin has Smite");
+        assert!(!data.all_players[1].has_smite(), "Ahri has no Smite");
+        // A player with no summoner-spell data must not panic or false-positive.
+        let bare: AllGameData =
+            serde_json::from_str(r#"{ "allPlayers": [ { "championName": "Teemo" } ] }"#).unwrap();
+        assert!(!bare.all_players[0].has_smite());
     }
 
     #[test]

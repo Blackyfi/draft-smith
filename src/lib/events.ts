@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ConnectionStatus,
   DdragonStatus,
+  GankAlert,
   GameStateSummary,
   Recommendation,
 } from "@/types";
@@ -19,6 +20,8 @@ export interface TauriEvents {
   "ddragon-status": DdragonStatus;
   /** Emitted by the tray "Settings" menu item; the FE opens the Settings dialog. No payload. */
   "open-settings": null;
+  /** Transient alert emitted when the enemy jungler hits a gank-relevant moment. */
+  "gank-alert": GankAlert;
 }
 
 /**

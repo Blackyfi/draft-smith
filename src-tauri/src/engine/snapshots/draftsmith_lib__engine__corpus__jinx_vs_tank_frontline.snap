@@ -51,29 +51,106 @@ threats:
       - armor-stacking
       - mr-stacking
       - hard-cc
+    items:
+      - 3068
+      - 4401
+    durability: ~
   - champion: Sion
     archetype: tank
     signals:
       - health-stacking
       - hard-cc
+    items:
+      - 3084
+    durability: ~
   - champion: Malphite
     archetype: tank
     signals:
       - health-stacking
       - armor-stacking
       - hard-cc
+    items:
+      - 3143
+    durability: ~
   - champion: Darius
     archetype: juggernaut
     signals:
       - fed
       - health-stacking
       - hard-cc
+    items:
+      - 3053
+    durability: ~
   - champion: Vi
     archetype: bruiser
     signals:
       - health-stacking
       - hard-cc
       - mobility
+    items:
+      - 3071
+      - 3053
+    durability: ~
+enemyItems:
+  - id: 3068
+    name: Sunfire Aegis
+    intents:
+      - armor_self
+      - health_self
+    owners:
+      - Ornn
+    countersYou: true
+    countersYouReason: Reduces your physical damage.
+    counterHint: Answer with %max-HP damage.
+  - id: 4401
+    name: Force of Nature
+    intents:
+      - mr_self
+      - move_speed
+    owners:
+      - Ornn
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with magic penetration.
+  - id: 3084
+    name: Heartsteel
+    intents:
+      - health_self
+    owners:
+      - Sion
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with %max-HP damage.
+  - id: 3143
+    name: "Randuin's Omen"
+    intents:
+      - armor_self
+      - health_self
+    owners:
+      - Malphite
+    countersYou: true
+    countersYouReason: Reduces your physical damage.
+    counterHint: Answer with armor penetration.
+  - id: 3053
+    name: "Sterak's Gage"
+    intents:
+      - health_self
+    owners:
+      - Darius
+      - Vi
+    countersYou: false
+    countersYouReason: ~
+    counterHint: Answer with %max-HP damage.
+  - id: 3071
+    name: Black Cleaver
+    intents:
+      - armor_pen_percent
+      - health_self
+    owners:
+      - Vi
+    countersYou: false
+    countersYouReason: ~
+    counterHint: ~
 focus:
   - champion: Darius
     priority: primary
