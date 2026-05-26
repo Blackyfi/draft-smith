@@ -10,6 +10,7 @@ pub mod ddragon;
 pub mod engine;
 pub mod game;
 pub mod item;
+pub mod meta;
 pub mod settings;
 pub mod status;
 
@@ -25,6 +26,7 @@ pub use engine::{
 pub use engine::{FocusPriority, FocusTarget};
 pub use game::GameStateSummary;
 pub use item::ItemMeta;
+pub use meta::{MetaBuild, MetaItem, MetaItemOption};
 // `Aggressiveness`/`Theme` are part of the typed FE↔Rust settings contract (mirrored in
 // `src/types.ts`) even though the Rust core currently only names `Settings` directly.
 #[allow(unused_imports)]

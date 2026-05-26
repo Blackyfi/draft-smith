@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS: Settings = {
   locale: "en_US",
   aggressiveness: "rules-only",
   abilityKeys: { layout: "qwerty", custom: ["Q", "W", "E", "R"] },
+  metaRank: "diamond_plus",
+  showMetaPanel: true,
 };
 
 const UPDATE_AVAILABLE: UpdateInfo = {
@@ -110,8 +112,7 @@ describe("About & Updates section", () => {
   it("shows install-pending state while installUpdate is in progress", async () => {
     tauri.invokeHandlers["check_for_update"] = () => UPDATE_AVAILABLE;
     // installUpdate never resolves — simulates long relaunch
-    tauri.invokeHandlers["install_update"] = () =>
-      new Promise<void>(() => {});
+    tauri.invokeHandlers["install_update"] = () => new Promise<void>(() => {});
     const user = userEvent.setup();
     renderDialog();
 
@@ -134,9 +135,7 @@ describe("About & Updates section", () => {
     expect(
       await screen.findByText(/couldn't check for updates/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("opens the changelog panel and renders content on 'What's new' click", async () => {

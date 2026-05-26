@@ -33,7 +33,16 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { api } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
-import type { KeyLayout } from "@/types";
+import type { KeyLayout, Rank } from "@/types";
+
+/** Rank options for the Meta panel (Tier B). */
+const RANK_OPTIONS: { value: Rank; label: string }[] = [
+  { value: "challenger", label: "Challenger" },
+  { value: "master_plus", label: "Master+" },
+  { value: "diamond_plus", label: "Diamond+" },
+  { value: "emerald_plus", label: "Emerald+" },
+  { value: "platinum_plus", label: "Platinum+" },
+];
 
 /** Curated DDragon locale list (spec: locale drives the re-download). */
 const LOCALES: { value: string; label: string }[] = [
@@ -223,6 +232,46 @@ export function SettingsDialog() {
             <p className="text-[11px] text-muted-foreground">
               Rules only uses the data-driven rule engine (Tier A). Stats-biased
               will blend win-rate data in a future update (Tier B / M7).
+            </p>
+          </div>
+
+          {/* Meta panel — show/hide toggle */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="grid gap-0.5">
+              <Label htmlFor="meta-panel-switch">Show Meta panel</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Display the highest win-rate build beside the Adapt panel.
+              </p>
+            </div>
+            <Switch
+              id="meta-panel-switch"
+              checked={settings.showMetaPanel}
+              onCheckedChange={(checked) => update({ showMetaPanel: checked })}
+              aria-label="Toggle Meta panel"
+            />
+          </div>
+
+          {/* Meta panel — rank selector */}
+          <div className="grid gap-1.5">
+            <Label htmlFor="meta-rank-select">Meta build rank</Label>
+            <Select
+              value={settings.metaRank}
+              onValueChange={(v) => update({ metaRank: v as Rank })}
+            >
+              <SelectTrigger id="meta-rank-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RANK_OPTIONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Rank bracket used for the Meta panel win-rate data (u.gg).
+              Default: Diamond+.
             </p>
           </div>
 

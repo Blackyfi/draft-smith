@@ -2,6 +2,7 @@ mod commands;
 mod ddragon;
 mod engine;
 mod live_client;
+mod meta;
 mod model;
 mod poll;
 mod rules;
@@ -61,6 +62,8 @@ pub fn run() {
             // `refresh_ddragon` reads the locale from the settings state managed above.
             let cache_root = app_data_dir.join("ddragon");
             app.manage(state::DdragonState::new(cache_root));
+            // The "Tier B" meta-build cache (u.gg overview JSON) lives alongside the DDragon cache.
+            app.manage(state::MetaState::new(app_data_dir.join("meta")));
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 commands::refresh_ddragon(&handle, false).await;
@@ -87,6 +90,7 @@ pub fn run() {
             commands::get_current_recommendation,
             commands::force_refresh_ddragon,
             commands::get_champion_meta,
+            commands::get_meta_build,
             commands::get_item_icon,
             commands::get_champion_icon,
             commands::get_champion_icon_by_name,

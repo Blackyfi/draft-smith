@@ -3,8 +3,9 @@
 > A modern, lightweight desktop companion for League of Legends that detects the
 > live matchup and continuously recommends what to build next — for **any
 > champion**, against **any enemy**, reacting in real time to what the enemy
-> actually buys. Porofessor-style, but item-recommendation-focused, fully on
-> Riot-sanctioned data, and engineered as a production-grade product.
+> actually buys. Porofessor-style, but item-recommendation-focused, primarily on
+> Riot-sanctioned data (plus an out-of-game, advisory Tier B stats source — §3.5),
+> and engineered as a production-grade product.
 
 ---
 
@@ -17,9 +18,10 @@ playing — adapting live to the enemy team's composition and their *actual*
 purchases — through a clean desktop window that lives beside the game.
 
 ### 1.2 What it is NOT (scope guardrails)
-- **Not** an overlay that injects into or reads the game's memory. Data comes
-  **only** from Riot's sanctioned **Live Client Data API** (local) and **Data
+- **Not** an overlay that injects into or reads the game's memory. *In-game* data
+  comes **only** from Riot's sanctioned **Live Client Data API** (local) and **Data
   Dragon** (static CDN). No memory reading, no DLL injection, no packet sniffing.
+  (One out-of-game exception: the advisory Tier B meta-build stats source — §3.5.)
 - **Not** an automation tool. It *advises*; it never buys, clicks, or acts in the
   game. (Riot policy: products may not dictate player decisions or auto-act.)
 - **Not** champion-specific. Ahri was the original prototype idea; the shipped
@@ -135,8 +137,26 @@ requires registering the product. Explicitly **out of scope for v1**.
 ### 3.4 Compliance constraints (bake into product behavior)
 - Advisory only; never auto-act or "dictate decisions."
 - Do **not** display win rates for Arena items or Augments.
-- Only use information already available to the player in their own live game.
+- For *in-game* signals, only use information already available to the player in
+  their own live game. (Out-of-game aggregate stats — §3.5 — are a separate matter.)
 - Register the product with Riot before any public distribution.
+
+### 3.5 Tier B stats source — u.gg (third-party, owner-approved)
+The "highest win-rate build" **Meta panel** (§5.3 Tier B) is sourced from u.gg's public
+`stats2` build JSON (`https://stats2.u.gg/lol/<v>/overview/<patch>/ranked_solo_5x5/<championId>/<v>.json`).
+This is **not** Riot-sanctioned data — it is a deliberate, **owner-approved relaxation** of §1.2's
+"Riot data only" stance, accepted for its low practical risk (read-only public JSON; no client
+interaction, no automation). Constraints baked into behavior:
+- Requires a **browser User-Agent**; fetched with a *separate* ordinary HTTP client — never the
+  local `127.0.0.1:2999` cert-exception client.
+- Fetched **at most once per champion at game start**, then **cached to disk** (one overview JSON
+  holds all roles/ranks); never polled mid-game. Patch is derived from the DDragon version; u.gg's
+  data-format version segments may bump and are handled with **graceful fallback** (panel shows
+  "unavailable"; Tier A is unaffected).
+- **Summoner's Rift builds only.** The §3.4 / §5 ban on Arena & Augment win rates is absolute and
+  unchanged. Advisory framing only; default rank filter **Diamond+**.
+- *Mobalytics was evaluated first and rejected:* its build pages are bot-walled (HTTP 403) with no
+  public data API.
 
 ---
 
@@ -236,11 +256,13 @@ requires registering the product. Explicitly **out of scope for v1**.
 - **Tier A — rule-based (ships in v1):** hand-authored intent tags + archetype
   counters. Transparent, explainable, patch-stable. This alone produces good
   recommendations for every champion.
-- **Tier B — stats-assisted (v1.1+, optional):** ingest an aggregate
-  "matchup → highest-winrate items" table (sourced/imported as data, refreshed
-  per patch) to bias ordering toward what's empirically winning. Must respect
-  Riot policy (no Arena/Augment win rates; advisory framing). The engine treats
-  this as a **prior that nudges** the rule-based result, never as a black box.
+- **Tier B — stats-assisted:** the empirically-winning build, sourced live from u.gg
+  (§3.5), refreshed per patch. Must respect Riot policy (no Arena/Augment win rates;
+  advisory framing). **Shipping decision:** rather than blending Tier B into the Tier A
+  ranking, it is presented as a **separate "Meta" panel** beside the Tier A "Adapt" panel —
+  "what wins on average for your champ/role" vs. "what to adapt vs. *this* comp" — which is
+  more transparent than a hidden prior. Default rank filter **Diamond+**, with an in-panel
+  role toggle (Live Client role is unreliable; default to the most-played role from the data).
 
 ### 5.4 Determinism & testing
 - Engine is pure (no clock, no network, no randomness): given the same inputs it

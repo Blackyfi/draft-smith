@@ -25,6 +25,21 @@ impl DdragonState {
     }
 }
 
+/// Meta-build ("Tier B") layer state: the on-disk cache root for u.gg overview JSON.
+///
+/// Mirrors [`DdragonState`]: the cache root lives in the app-data dir alongside the DDragon cache.
+/// The u.gg HTTP client is cheap to build per request (an `Arc` internally) and stateless, so it is
+/// constructed on demand in the command rather than held here.
+pub struct MetaState {
+    pub cache_root: PathBuf,
+}
+
+impl MetaState {
+    pub fn new(cache_root: PathBuf) -> Self {
+        Self { cache_root }
+    }
+}
+
 /// Live game state owned by the M2 poller.
 ///
 /// `status` is the current [`ConnectionStatus`] (read by the `get_status` command); the poller

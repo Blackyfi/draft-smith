@@ -4,6 +4,7 @@ import type {
   ChampionMeta,
   ConnectionStatus,
   DdragonStatus,
+  MetaBuild,
   Recommendation,
   Settings,
   UpdateInfo,
@@ -84,6 +85,14 @@ export const api = {
 
   /** Downloads + installs the available update and relaunches the app. */
   installUpdate: () => invoke<void>("install_update"),
+
+  /**
+   * Fetches the highest win-rate meta build for a champion+role from the Rust cache (u.gg data,
+   * Tier B, PROJECT_SPEC §3.5). `role` may be `null` to let Rust pick the most-played role.
+   * Returns `null` when no data is available (champion unknown, patch mismatch, offline).
+   */
+  getMetaBuild: (champion: string, role: string | null, rank: string) =>
+    invoke<MetaBuild | null>("get_meta_build", { champion, role, rank }),
 };
 
 /**
