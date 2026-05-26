@@ -51,6 +51,7 @@ export function Dashboard({
             champion={recommendation.selfChampion}
             rank={metaRank}
             abilityRanks={recommendation.abilityRanks}
+            abilityKeys={settings?.abilityKeys}
           />
         )}
         {noSignalsYet && (

@@ -30,14 +30,14 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
           data-next={isNext || undefined}
           data-owned={step.owned || undefined}
           className={cn(
-            "group relative flex w-28 shrink-0 cursor-default flex-col items-center gap-1 rounded-lg border bg-card p-1.5 text-center transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            "group relative flex w-16 shrink-0 cursor-default flex-col items-center gap-0.5 rounded-lg border bg-card p-1 text-center transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
             isNext &&
               "border-primary/60 ring-2 ring-primary/40 shadow-lg shadow-primary/20",
             step.owned && "opacity-60",
           )}
         >
           {isNext && (
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
               Next
             </span>
           )}
@@ -45,7 +45,7 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
             <ItemIcon
               itemId={step.itemId}
               name={step.name}
-              className="size-10"
+              className="size-9"
             />
             {step.owned && (
               <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-card">
@@ -54,10 +54,10 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
               </span>
             )}
           </div>
-          <span className="line-clamp-1 text-[11px] leading-tight font-medium">
+          <span className="line-clamp-1 w-full text-[10px] leading-tight font-medium">
             {step.name}
           </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          <span className="text-[9px] text-muted-foreground tabular-nums">
             {step.cost.toLocaleString()}g
           </span>
         </button>

@@ -28,11 +28,13 @@ coreItems:
     name: "Sorcerer's Shoes"
   - id: 4645
     name: Shadowflame
-options:
   - id: 3089
     name: "Rabadon's Deathcap"
-    winRate: 0.5523232323232323
-    games: 4950
+  - id: 3157
+    name: "Zhonya's Hourglass"
+  - id: 3135
+    name: Void Staff
+options:
   - id: 3175
     name: Imaginary Item
     winRate: 0.7249486418625884
@@ -41,14 +43,6 @@ options:
     name: "Mejai's Soulstealer"
     winRate: 0.8114195914091147
     games: 1909
-  - id: 3157
-    name: "Zhonya's Hourglass"
-    winRate: 0.5732337736932798
-    games: 1741
-  - id: 3135
-    name: Void Staff
-    winRate: 0.6218181818181818
-    games: 275
 skillOrder:
   - W
   - Q

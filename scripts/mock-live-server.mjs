@@ -80,8 +80,8 @@ state.activePlayer.abilities = {
 };
 
 /**
- * Scripted level-up sequence for a standard Q>W>E>R>Q>Q skill order.
- * Each entry is [level, slot] — when the player reaches `level`, put a point in `slot`.
+ * Scripted skill order for a standard Q>W>E>R>Q>Q champion.
+ * Each entry is [level, slot] — the point earned **at** `level` goes into `slot`.
  * R is taken at 6, 11, 16 (the three ult ranks); Q is maxed first, then W, then E.
  *
  *  Level | Slot
@@ -112,20 +112,31 @@ const LEVEL_SKILL_ORDER = [
   [16, "R"], [17, "E"], [18, "E"],
 ];
 
-/** Level up the activePlayer by one and assign the scripted ability point. */
+/**
+ * Advance the demo's skill progression by one tick.
+ *
+ * A real player *reaches* a level with the point still UNSPENT — the coach shows "level up now" for
+ * that level's ability — and only then spends it. We model exactly that: spend the **current**
+ * level's scripted point, then advance. So precisely one point is always pending and the SkillStrip
+ * shows a live, correct "level up now".
+ *
+ * (The previous version spent the point for the level it had just *advanced into*, which never
+ * applied level 1's Q at all — the active player starts at level 1. That orphaned point desynced the
+ * coach: the engine kept recommending Q to "unlock" while the board already showed W/E as taken.)
+ */
 function levelUp() {
-  const newLevel = state.activePlayer.level + 1;
-  if (newLevel > 18) return;
-  state.activePlayer.level = newLevel;
-  const entry = LEVEL_SKILL_ORDER.find(([lvl]) => lvl === newLevel);
+  const cur = state.activePlayer.level;
+  if (cur > 18) return;
+  const entry = LEVEL_SKILL_ORDER.find(([lvl]) => lvl === cur);
   if (entry) {
     const slot = entry[1];
     state.activePlayer.abilities[slot].abilityLevel += 1;
     console.log(
-      `  Ahri leveled to ${newLevel} — +1 in ${slot} ` +
+      `  Ahri spends level ${cur}'s point on ${slot} ` +
         `(now rank ${state.activePlayer.abilities[slot].abilityLevel})`,
     );
   }
+  if (cur < 18) state.activePlayer.level = cur + 1;
 }
 
 // Level up every STEP_INTERVAL_MS (same cadence as purchases) to keep the demo snappy.
@@ -204,7 +215,7 @@ const TIMELINE = [...baseBuildSteps, ...escalationSteps];
 
 let step = 0;
 const timer = setInterval(() => {
-  // Always try to level up on each tick (levels 2–18 progress over 17 ticks).
+  // Always advance skill progression on each tick (one pending point spent, then level up).
   levelUp();
 
   if (step >= TIMELINE.length) {

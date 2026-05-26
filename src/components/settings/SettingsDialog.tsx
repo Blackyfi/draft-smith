@@ -35,6 +35,17 @@ import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
 import type { KeyLayout, MovementMode, Rank } from "@/types";
 
+/**
+ * Movement keys per ability-key layout, shown in the "Keyboard movement" option. League's keyboard
+ * movement is physical-position based, so the keys are WASD on QWERTY and ZQSD on AZERTY (the same
+ * physical keys); a custom layout has no fixed name.
+ */
+const MOVEMENT_KEYS_LABEL: Record<KeyLayout, string> = {
+  qwerty: "WASD",
+  azerty: "ZQSD",
+  custom: "custom keys",
+};
+
 /** Rank options for the Meta panel (Tier B). */
 const RANK_OPTIONS: { value: Rank; label: string }[] = [
   { value: "challenger", label: "Challenger" },
@@ -275,40 +286,7 @@ export function SettingsDialog() {
             </p>
           </div>
 
-          {/* Movement mode — changes how the Q/W ability slots are pressed (WASD remaps them). */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="movement-mode-select">Movement mode</Label>
-            <Select
-              value={settings.abilityKeys.movementMode}
-              onValueChange={(v) =>
-                update({
-                  abilityKeys: {
-                    ...settings.abilityKeys,
-                    movementMode: v as MovementMode,
-                  },
-                })
-              }
-            >
-              <SelectTrigger id="movement-mode-select" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mouse">
-                  Mouse — right-click to move
-                </SelectItem>
-                <SelectItem value="keyboard">
-                  Keyboard (WASD) movement
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              In Keyboard (WASD) mode the skill coach shows your Q on
-              right-click (RMB) and W on Shift, matching League's WASD input. E
-              and R keep their layout keys.
-            </p>
-          </div>
-
-          {/* Ability keys */}
+          {/* Ability key layout — the letters your abilities sit on. Drives the skill-order keys. */}
           <div className="grid gap-1.5">
             <Label htmlFor="ability-layout-select">Ability key layout</Label>
             <Select
@@ -368,6 +346,42 @@ export function SettingsDialog() {
             <p className="text-[11px] text-muted-foreground">
               How ability slots are labeled in the skill-order coach. Custom
               lets you enter the exact keys you have bound in-game.
+            </p>
+          </div>
+
+          {/* Movement mode — sits under the layout because the keyboard keys (WASD vs ZQSD vs
+              custom) are derived from the layout chosen above. Changes how Q/W are displayed. */}
+          <div className="grid gap-1.5">
+            <Label htmlFor="movement-mode-select">Movement mode</Label>
+            <Select
+              value={settings.abilityKeys.movementMode}
+              onValueChange={(v) =>
+                update({
+                  abilityKeys: {
+                    ...settings.abilityKeys,
+                    movementMode: v as MovementMode,
+                  },
+                })
+              }
+            >
+              <SelectTrigger id="movement-mode-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mouse">
+                  Mouse — right-click to move
+                </SelectItem>
+                <SelectItem value="keyboard">
+                  Keyboard movement (
+                  {MOVEMENT_KEYS_LABEL[settings.abilityKeys.layout]})
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Keyboard movement uses{" "}
+              {MOVEMENT_KEYS_LABEL[settings.abilityKeys.layout]} to move, so the
+              skill coach shows your Q on right-click (RMB) and W on Shift; E and
+              R keep their layout keys.
             </p>
           </div>
 

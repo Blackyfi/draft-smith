@@ -9,9 +9,20 @@ import {
 import type { SwapSuggestion } from "@/types";
 
 /**
+ * The engine's `reason` reads "Counters X and Y (…) — <punchline>." The clause after the em-dash is
+ * the concise "why" we surface inline next to the item; if there's no dash we fall back to the whole
+ * reason. The full sentence is still in the tooltip.
+ */
+function conciseReason(reason: string): string {
+  const dash = reason.indexOf("—");
+  const tail = dash === -1 ? reason : reason.slice(dash + 1);
+  return tail.trim().replace(/\.$/, "");
+}
+
+/**
  * The situational swaps strip (PROJECT_SPEC §6.3): 2–4 "if X then buy Y" alternatives. The trigger
- * condition is the headline; the full reason is in a tooltip. Renders nothing when the engine
- * offered no swaps.
+ * condition is the headline; the concise reason sits greyed next to the item name, and the full
+ * reason is in a tooltip. Renders nothing when the engine offered no swaps.
  */
 export function SwapStrip({ swaps }: { swaps: SwapSuggestion[] }) {
   if (swaps.length === 0) return null;
@@ -39,13 +50,18 @@ export function SwapStrip({ swaps }: { swaps: SwapSuggestion[] }) {
                     name={swap.name}
                     className="size-8 shrink-0"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">
                       {swap.trigger}
                     </p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      → {swap.name}
-                    </p>
+                    <div className="flex min-w-0 items-baseline gap-1.5">
+                      <p className="shrink-0 text-[11px] text-muted-foreground">
+                        → {swap.name}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground/60">
+                        {conciseReason(swap.reason)}
+                      </p>
+                    </div>
                   </div>
                 </button>
               </TooltipTrigger>
