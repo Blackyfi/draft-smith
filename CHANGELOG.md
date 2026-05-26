@@ -12,7 +12,7 @@ All notable changes to DraftSmith are listed here. Newest first.
   look it up on the right.
 - **Kill-threat read on every enemy** — each enemy now shows an at-a-glance survivability gauge
   versus your damage, plus an estimated "≈N× <your spell>" count of how many casts of your main nuke
-  it takes to kill them from full health (for supported champions). It folds in their champion,
+  it takes to kill them from full health (every champion in the roster is covered). It folds in their champion,
   level, and items. It's an estimate — it can't see enemy runes or their current health.
 - **Jungle gank alerts** — a big, bright pop-up (with a sound) warns you when the enemy jungler's
   gank window opens: an early-gank warning timed to their champion's clear style, and a heads-up when
