@@ -2,6 +2,13 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.13
+
+### Fixes
+- **Skill order "Max" line now matches your movement keys** — with Keyboard (WASD) movement enabled,
+  the max-priority hint follows the keys you actually press (e.g. "Max RMB›Shift›E") instead of
+  staying stuck on "Max QWE" / "Max AZE", matching the per-level badges above it.
+
 ## 0.1.12
 
 ### Improvements

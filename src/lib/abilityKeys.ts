@@ -14,18 +14,6 @@ const KEYBOARD_OVERRIDE: Partial<
   W: { key: "Shift", aria: "Left Shift" },
 };
 
-/**
- * The slot's plain layout letter (Q W E R / A Z E R / custom), ignoring movement mode. Use this for
- * places that name the *ability identity* (e.g. the "Max Q>W>E" priority) rather than the key you
- * physically press — where the WASD-mode "RMB"/"Shift" overrides would be unreadable.
- */
-export function slotToLayoutKey(
-  slot: AbilitySlot,
-  abilityKeys: AbilityKeys,
-): string {
-  return layoutKey(slot, abilityKeys);
-}
-
 /** Resolves a slot to its layout letter (Q W E R / A Z E R / custom). */
 function layoutKey(slot: AbilitySlot, abilityKeys: AbilityKeys): string {
   const idx = SLOT_INDEX[slot];

@@ -221,14 +221,18 @@ describe("MetaPanel", () => {
       // skillOrder ["Q","W","E","Q","Q","R"] → RMB / Shift for the Q/W slots, E/R unchanged.
       expect((await screen.findAllByText("RMB")).length).toBeGreaterThan(0);
       expect(screen.getAllByText("Shift").length).toBeGreaterThan(0);
-      // Max priority names the ability identity (not the remapped keys): AZERTY Q/W/E → "AZE".
-      expect(screen.getByText("Max AZE")).toBeInTheDocument();
+      // Max priority follows the same remap: Q→RMB, W→Shift, E stays E, joined with "›".
+      expect(screen.getByText("Max RMB›Shift›E")).toBeInTheDocument();
     });
 
     it("highlights the earliest unfulfilled box as the next point to spend", async () => {
       // Q at rank 1 → the first box (Q) is taken; the next box in the plan (W) is "level up next".
       renderWithKeys(
-        { layout: "qwerty", custom: ["Q", "W", "E", "R"], movementMode: "mouse" },
+        {
+          layout: "qwerty",
+          custom: ["Q", "W", "E", "R"],
+          movementMode: "mouse",
+        },
         { q: 1, w: 0, e: 0, r: 0 },
       );
       expect(
