@@ -121,19 +121,20 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
       </div>
 
       {/* Stat line — the actual values from the game data, e.g. "18 Lethality · 200 HP · 15 Haste".
-          Each stat keeps its value (bold) + a compact label; wraps when the tile is narrow. */}
+          A flex-wrap row so each stat (value + compact label) stays intact but the set reflows onto
+          multiple rows on narrow tiles instead of overflowing the box. `min-w-0` lets the row shrink
+          within the flex card. */}
       {meta?.stats && meta.stats.length > 0 && (
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-[10px] leading-snug text-muted-foreground">
           {meta.stats.map((s, i) => (
             <span key={`${s.label}-${i}`} className="whitespace-nowrap">
-              {i > 0 && <span className="text-muted-foreground/40"> · </span>}
               <span className="font-semibold tabular-nums text-foreground/80">
                 {s.value}
               </span>{" "}
               <span>{abbreviateStatLabel(s.label)}</span>
             </span>
           ))}
-        </p>
+        </div>
       )}
 
       {/* Intent pills */}

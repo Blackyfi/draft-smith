@@ -165,8 +165,17 @@ fn clean_description(raw: &str) -> String {
 /// value and trailing label. Lines without a numeric value (stray passive text) are skipped, and an
 /// item with no `<stats>` block at all (consumables, trinkets) yields an empty vec.
 ///
+/// Defensive: if the closing `</stats>` is missing we'd otherwise sweep the entire passive
+/// description into the block, so any "stat" whose label reads like prose (too many words / too
+/// long) is dropped — a real stat label is short ("Gold Per 10 Seconds" is the longest at 4 words).
+/// This keeps the panel's stat line from ballooning past its tile.
+///
 /// Pure & data-driven — keys off the DDragon markup shape only, never an item name or id.
 fn parse_stat_lines(raw: &str) -> Vec<ItemStat> {
+    /// A genuine stat label is short; anything longer is passive prose that slipped in.
+    const MAX_LABEL_WORDS: usize = 5;
+    const MAX_LABEL_CHARS: usize = 28;
+
     let Some(start) = raw.find("<stats>") else {
         return Vec::new();
     };
@@ -183,10 +192,13 @@ fn parse_stat_lines(raw: &str) -> Vec<ItemStat> {
             let text = strip_tags_decode(segment);
             let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
             // Keep only "<value> <label>" lines whose value carries a digit (e.g. "18 Lethality",
-            // "15% Magic Penetration"); skip label-only or empty fragments.
+            // "15% Magic Penetration"); skip label-only/empty fragments and prose-length labels.
             match text.split_once(' ') {
                 Some((value, label))
-                    if value.chars().any(|c| c.is_ascii_digit()) && !label.trim().is_empty() =>
+                    if value.chars().any(|c| c.is_ascii_digit())
+                        && !label.trim().is_empty()
+                        && label.trim().chars().count() <= MAX_LABEL_CHARS
+                        && label.split_whitespace().count() <= MAX_LABEL_WORDS =>
                 {
                     Some(ItemStat {
                         value: value.to_string(),
@@ -372,6 +384,50 @@ mod tests {
         assert!(parse_stat_lines("<mainText>Just a passive.</mainText>").is_empty());
         // A stats block whose only line has no numeric value is dropped, not surfaced as noise.
         assert!(parse_stat_lines("<stats><passive>Unique</passive></stats>").is_empty());
+    }
+
+    #[test]
+    fn parse_stat_lines_keeps_celestial_opposition_short_stats() {
+        // Real Celestial Opposition shape: four legit, short stats (incl. the longest real label,
+        // "Gold Per 10 Seconds"); the passive prose after </stats> must be excluded.
+        let raw = "<mainText><stats><attention>200</attention> Health<br><attention>75%</attention> Base Health Regen<br><attention>75%</attention> Base Mana Regen<br><attention>9</attention> Gold Per 10 Seconds</stats><br><br><passive>Blessing</passive><br>Reduce incoming champion damage for 2 seconds after taking damage.</mainText>";
+        let stats = parse_stat_lines(raw);
+        assert_eq!(
+            stats,
+            vec![
+                ItemStat {
+                    value: "200".into(),
+                    label: "Health".into()
+                },
+                ItemStat {
+                    value: "75%".into(),
+                    label: "Base Health Regen".into()
+                },
+                ItemStat {
+                    value: "75%".into(),
+                    label: "Base Mana Regen".into()
+                },
+                ItemStat {
+                    value: "9".into(),
+                    label: "Gold Per 10 Seconds".into()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_stat_lines_drops_prose_when_close_tag_missing() {
+        // No </stats>: without the prose guard we'd sweep the whole passive sentence in as a
+        // giant "stat". The real stat is kept; the number-leading prose line is dropped.
+        let raw = "<stats><attention>40</attention> Armor<br><attention>200</attention> bonus health and slows all nearby enemies who dare approach the bearer";
+        let stats = parse_stat_lines(raw);
+        assert_eq!(
+            stats,
+            vec![ItemStat {
+                value: "40".into(),
+                label: "Armor".into()
+            }]
+        );
     }
 
     #[test]

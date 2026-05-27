@@ -2,6 +2,13 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.11
+
+### Fixes
+- **Enemy item stats no longer overflow their box** — items with a long stat label (e.g. Celestial
+  Opposition's "Gold Per 10 Seconds") now wrap neatly inside the tile instead of spilling out. Long
+  stat names are also shortened (e.g. "Gold/10") so the values stay compact and readable.
+
 ## 0.1.10
 
 ### New features
