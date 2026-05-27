@@ -1,7 +1,10 @@
 import { AlertTriangle, Eye, ShoppingBag } from "lucide-react";
 
 import { ItemIcon } from "@/components/icons/ItemIcon";
-import { buildEnemyItemList } from "@/components/threat/enemyItemsHelpers";
+import {
+  abbreviateStatLabel,
+  buildEnemyItemList,
+} from "@/components/threat/enemyItemsHelpers";
 import { intentVisual } from "@/components/threat/intent-visuals";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -116,6 +119,22 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
           {intel && <OwnerNames owners={intel.owners} />}
         </div>
       </div>
+
+      {/* Stat line — the actual values from the game data, e.g. "18 Lethality · 200 HP · 15 Haste".
+          Each stat keeps its value (bold) + a compact label; wraps when the tile is narrow. */}
+      {meta?.stats && meta.stats.length > 0 && (
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          {meta.stats.map((s, i) => (
+            <span key={`${s.label}-${i}`} className="whitespace-nowrap">
+              {i > 0 && <span className="text-muted-foreground/40"> · </span>}
+              <span className="font-semibold tabular-nums text-foreground/80">
+                {s.value}
+              </span>{" "}
+              <span>{abbreviateStatLabel(s.label)}</span>
+            </span>
+          ))}
+        </p>
+      )}
 
       {/* Intent pills */}
       {intel && <IntentPills intents={intel.intents} />}

@@ -85,6 +85,20 @@ export interface ItemMeta {
   flatArmor: number;
   /** Flat magic resistance granted by the item (DDragon `stats.FlatSpellBlockMod`). */
   flatMr: number;
+  /** Displayable stat lines parsed from the DDragon description `<stats>` block; empty for
+   *  items with no stats (consumables, trinkets). */
+  stats: ItemStat[];
+}
+
+/**
+ * Mirrors `ItemStat` in `src-tauri/src/model/item.rs` (serde `camelCase`).
+ * One stat line from a DDragon item's `<stats>` block: a leading value (units preserved) + label.
+ */
+export interface ItemStat {
+  /** The numeric value as authored, units preserved (e.g. "18", "15%", "+8"). */
+  value: string;
+  /** The stat name following the value (e.g. "Lethality", "Ability Haste", "Health"). */
+  label: string;
 }
 
 /**

@@ -212,6 +212,7 @@ describe("EnemyItemsPanel", () => {
             flatHp: 0,
             flatArmor: 45,
             flatMr: 0,
+            stats: [],
           };
         }
         return null;
@@ -220,6 +221,40 @@ describe("EnemyItemsPanel", () => {
       const threats = [makeThreat("Zed", [3157])];
       renderPanel(threats, []); // no intel provided
       expect(await screen.findByText("Zhonya's Hourglass")).toBeInTheDocument();
+    });
+
+    it("renders the per-item stat line with values and compact labels", async () => {
+      tauri.invokeHandlers["get_item_meta"] = (args) => {
+        const { id } = args as { id: number };
+        if (id === 3142) {
+          return {
+            id: 3142,
+            name: "Youmuu's Ghostblade",
+            totalCost: 3000,
+            tags: [],
+            image: "3142.png",
+            plaintext: "",
+            description: "",
+            flatHp: 0,
+            flatArmor: 0,
+            flatMr: 0,
+            stats: [
+              { value: "18", label: "Lethality" },
+              { value: "200", label: "Health" },
+              { value: "15", label: "Ability Haste" },
+            ],
+          };
+        }
+        return null;
+      };
+
+      const threats = [makeThreat("Zed", [3142])];
+      renderPanel(threats, []);
+      // Value kept verbatim; "Health" → "HP" and "Ability Haste" → "Haste" abbreviated.
+      expect(await screen.findByText("18")).toBeInTheDocument();
+      expect(screen.getByText("Lethality")).toBeInTheDocument();
+      expect(screen.getByText("HP")).toBeInTheDocument();
+      expect(screen.getByText("Haste")).toBeInTheDocument();
     });
   });
 });

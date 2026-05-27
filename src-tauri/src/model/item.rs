@@ -32,4 +32,21 @@ pub struct ItemMeta {
     pub flat_armor: f32,
     /// Flat magic resist the item grants (DDragon `stats.FlatSpellBlockMod`); 0.0 when none.
     pub flat_mr: f32,
+    /// Displayable stat lines parsed from the DDragon `description` `<stats>` block (value + label,
+    /// e.g. `"18" + "Lethality"`). Empty for items without a stats block (consumables, trinkets).
+    /// Raw CDN numbers, no engine logic — surfaced in the Enemy Items panel.
+    pub stats: Vec<ItemStat>,
+}
+
+/// One displayable stat line from a DDragon item's `<stats>` description block — e.g.
+/// `value = "18"`, `label = "Lethality"` (or `value = "15%"`, `label = "Magic Penetration"`).
+///
+/// Mirrors `ItemStat` in `src/types.ts` (serde `camelCase`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemStat {
+    /// The leading numeric value as authored, units preserved (`"18"`, `"15%"`, `"+8"`).
+    pub value: String,
+    /// The stat name following the value (`"Lethality"`, `"Ability Haste"`, `"Health"`).
+    pub label: String,
 }

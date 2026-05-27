@@ -1,7 +1,7 @@
 //! Parsing of DDragon `item.json` into an `id -> ItemMeta` map.
 
 use crate::ddragon::error::Result;
-use crate::model::ItemMeta;
+use crate::model::{ItemMeta, ItemStat};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -81,6 +81,7 @@ pub fn parse_items(bytes: &[u8]) -> Result<HashMap<u32, ItemMeta>> {
                         flat_hp: raw.stats.flat_hp,
                         flat_armor: raw.stats.flat_armor,
                         flat_mr: raw.stats.flat_mr,
+                        stats: parse_stat_lines(&raw.description),
                     },
                 );
             }
@@ -154,6 +155,70 @@ fn clean_description(raw: &str) -> String {
     }
 
     collapsed.join("\n").trim().to_string()
+}
+
+/// Extracts the displayable stat lines from a DDragon item `description`'s `<stats>` block.
+///
+/// Each stat there is authored as `<TAG>VALUE</TAG> Label` (e.g.
+/// `<attention>18</attention> Lethality`), with `<br>` between entries. We isolate the block, split
+/// on the line breaks, drop the value/format tags, and split each line into its leading numeric
+/// value and trailing label. Lines without a numeric value (stray passive text) are skipped, and an
+/// item with no `<stats>` block at all (consumables, trinkets) yields an empty vec.
+///
+/// Pure & data-driven — keys off the DDragon markup shape only, never an item name or id.
+fn parse_stat_lines(raw: &str) -> Vec<ItemStat> {
+    let Some(start) = raw.find("<stats>") else {
+        return Vec::new();
+    };
+    let after = &raw[start + "<stats>".len()..];
+    let block = match after.find("</stats>") {
+        Some(end) => &after[..end],
+        None => after,
+    };
+    let normalized = block.replace("<br/>", "<br>").replace("<br />", "<br>");
+
+    normalized
+        .split("<br>")
+        .filter_map(|segment| {
+            let text = strip_tags_decode(segment);
+            let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+            // Keep only "<value> <label>" lines whose value carries a digit (e.g. "18 Lethality",
+            // "15% Magic Penetration"); skip label-only or empty fragments.
+            match text.split_once(' ') {
+                Some((value, label))
+                    if value.chars().any(|c| c.is_ascii_digit()) && !label.trim().is_empty() =>
+                {
+                    Some(ItemStat {
+                        value: value.to_string(),
+                        label: label.trim().to_string(),
+                    })
+                }
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// Strips every `<...>` tag (keeping inner text) and decodes the common HTML entities DDragon
+/// emits. A focused helper for [`parse_stat_lines`]; [`clean_description`] does the same inline for
+/// its multi-line output.
+fn strip_tags_decode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(ch),
+            _ => {}
+        }
+    }
+    out.replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
 }
 
 #[cfg(test)]
@@ -267,6 +332,65 @@ mod tests {
         assert_eq!(
             item.description,
             "18 Lethality\n200 Health\n\nAte Up: dealing damage gives you energy."
+        );
+    }
+
+    #[test]
+    fn parses_stat_lines_into_value_label_pairs() {
+        let json = br#"{
+            "data": {
+                "3142": {
+                    "name": "Youmuu's Ghostblade",
+                    "description": "<mainText><stats><attention>18</attention> Lethality<br><attention>200</attention> Health<br><attention>15%</attention> Magic Penetration</stats><br><li><passive>Ate Up:</passive> energy.</li></mainText>"
+                }
+            }
+        }"#;
+        let items = parse_items(json).unwrap();
+        let stats = &items[&3142].stats;
+        assert_eq!(
+            stats,
+            &vec![
+                ItemStat {
+                    value: "18".into(),
+                    label: "Lethality".into()
+                },
+                ItemStat {
+                    value: "200".into(),
+                    label: "Health".into()
+                },
+                ItemStat {
+                    value: "15%".into(),
+                    label: "Magic Penetration".into()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_stat_lines_skips_value_less_and_blockless_items() {
+        // No <stats> block at all → empty.
+        assert!(parse_stat_lines("<mainText>Just a passive.</mainText>").is_empty());
+        // A stats block whose only line has no numeric value is dropped, not surfaced as noise.
+        assert!(parse_stat_lines("<stats><passive>Unique</passive></stats>").is_empty());
+    }
+
+    #[test]
+    fn parse_stat_lines_handles_br_variants() {
+        let stats = parse_stat_lines(
+            "<stats><attention>45</attention> Armor<br/><attention>300</attention> Health</stats>",
+        );
+        assert_eq!(
+            stats,
+            vec![
+                ItemStat {
+                    value: "45".into(),
+                    label: "Armor".into()
+                },
+                ItemStat {
+                    value: "300".into(),
+                    label: "Health".into()
+                },
+            ]
         );
     }
 
