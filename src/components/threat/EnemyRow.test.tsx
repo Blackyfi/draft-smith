@@ -54,6 +54,18 @@ const DURABILITY_NO_CASTS: Durability = {
   perCastDamage: null,
 };
 
+const DURABILITY_TRUE_DMG: Durability = {
+  effectiveHp: 1000,
+  rawHp: 1000,
+  resist: 0,
+  resistAfterPen: 0,
+  resistKind: "none",
+  castsToKill: 8,
+  abilitySlot: "Q",
+  abilityName: "Orb of Deception",
+  perCastDamage: 130,
+};
+
 function makeThreat(
   champion: string,
   durability: Durability | null,
@@ -194,6 +206,44 @@ describe("EnemyRow durability", () => {
           "Approximately 3 casts of Orb of Deception to kill",
         ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("inline damage math", () => {
+    it("shows the raw → net formula reconstructed from the post-mitigation per-cast damage", () => {
+      // perCastDamage 750 (net) with 50 MR after pen → raw = 750 * 150/100 = 1125.
+      renderRow(makeThreat("Ahri", DURABILITY_WITH_CASTS));
+      expect(screen.getByText("1125")).toBeInTheDocument();
+      expect(screen.getByText("750")).toBeInTheDocument();
+      expect(screen.getByText(/· 50 MR/)).toBeInTheDocument();
+    });
+
+    it("shows the % blocked severity badge with an accessible label", () => {
+      // 50 MR after pen → blocked = 50/150 = 33%.
+      renderRow(makeThreat("Ahri", DURABILITY_WITH_CASTS));
+      expect(
+        screen.getByLabelText(
+          "33% of your Orb of Deception damage blocked by their MR",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("omits the % blocked badge and resist for true damage", () => {
+      renderRow(makeThreat("Ahri", DURABILITY_TRUE_DMG));
+      // Net damage still shown, labelled as true; no resist arrow math, no blocked badge.
+      expect(
+        screen.getByLabelText("130 true damage per cast"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("true")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/damage blocked by their/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders no damage math when there is no per-cast estimate", () => {
+      renderRow(makeThreat("Darius", DURABILITY_NO_CASTS));
+      expect(screen.queryByText(/blocked/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/damage blocked/)).not.toBeInTheDocument();
     });
   });
 });

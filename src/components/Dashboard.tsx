@@ -21,11 +21,15 @@ import type { Rank, Recommendation } from "@/types";
  * "watching enemy buys" hint (PROJECT_SPEC §6.4, in-game-early).
  *
  * Layout: three columns on xl+ windows, two columns on md, one on narrow/overlay.
- *  - Column 1 (left): build-decision content — skill order, Adapt build path, Meta panel.
- *  - Column 2 (middle): situational/awareness content — focus targets, threat board, swaps.
- *  - Column 3 (right): enemy items reference panel.
+ *  - Column 1 (left): build-decision content — skill order, situational swaps, Adapt build path,
+ *    Meta panel. Swaps live here (under skill order) rather than with the threat board so the
+ *    awareness column can grow tall with enemy threats without pushing swaps off-screen.
+ *  - Column 2 (middle): situational/awareness content — focus targets, threat board.
+ *  - Column 3 (right): enemy items reference panel — given a `2fr` track (twice the width of the
+ *    other two) so its internal tile grid can show two-plus items per row, letting the player scan
+ *    the enemy inventory at a glance without scrolling mid-game.
  * At md (2-col), the items panel spans both columns so it renders full-width below the other two
- * rather than being orphaned in a half-row. At xl+ it takes its own column.
+ * rather than being orphaned in a half-row. At xl+ it occupies the wide third track.
  */
 export function Dashboard({
   recommendation,
@@ -44,10 +48,11 @@ export function Dashboard({
   const metaRank: Rank = settings?.metaRank ?? "diamond_plus";
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 p-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-5 p-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_2fr]">
       {/* Column 1 — what to build. */}
       <div className="flex min-w-0 flex-col gap-5">
         <SkillStrip />
+        <SwapStrip swaps={recommendation.swaps} />
         <BuildNext buildPath={recommendation.buildPath} />
         {showMeta && (
           <MetaPanel
@@ -69,12 +74,11 @@ export function Dashboard({
       <div className="flex min-w-0 flex-col gap-5">
         <FocusCallout />
         <EnemyThreatBoard threats={recommendation.threats} />
-        <SwapStrip swaps={recommendation.swaps} />
       </div>
 
       {/* Column 3 — enemy items reference.
           At md (2-col) this spans both columns so it stacks cleanly below rather than being
-          orphaned. At xl+ it lives in its own third column. */}
+          orphaned. At xl+ it lives in the wide (2fr) third track. */}
       <div className="flex min-w-0 flex-col gap-5 md:col-span-2 xl:col-span-1">
         <EnemyItemsPanel
           threats={recommendation.threats}

@@ -66,34 +66,51 @@ function IntentPills({ intents }: { intents: IntentTag[] }) {
 }
 
 /**
- * The stripped DDragon item description — fetches from the hook, shows a skeleton while loading,
- * omits gracefully when empty or unavailable.
+ * The stripped DDragon item description, rendered inside the icon's hover tooltip — fetches from the
+ * hook, shows a skeleton while loading, omits gracefully when empty or unavailable. Kept out of the
+ * tile body so tiles stay compact and many fit on screen without scrolling; the full text is one
+ * hover away.
  */
 function ItemDescription({ itemId }: { itemId: number }) {
   const { data: meta, isLoading } = useItemMeta(itemId);
   const text = meta?.description || meta?.plaintext || null;
 
   if (isLoading) {
-    return <Skeleton className="mt-1 h-3 w-3/4" />;
+    return <Skeleton className="mt-1 h-3 w-40" />;
   }
   if (!text) return null;
   return (
-    <p className="whitespace-pre-line text-[10px] leading-relaxed text-muted-foreground">
+    <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-muted-foreground">
       {text}
     </p>
   );
 }
 
-/** One item card in the Enemy Items panel. */
+/**
+ * One medium tile in the Enemy Items grid: icon + name + owners + intent pills, plus the inline
+ * "Built against you" warning when the item counters the player. The long DDragon description lives
+ * in the icon's hover tooltip rather than inline, keeping the tile short so the adaptive grid can
+ * pack two-plus items per row.
+ */
 function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
   const { data: meta } = useItemMeta(id);
   const name = intel?.name ?? meta?.name ?? String(id);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-2">
-      {/* Top row: icon + name + owners */}
+    <div className="flex h-full flex-col gap-1.5 rounded-lg border bg-muted/30 p-2">
+      {/* Top row: icon (hover → full description) + name + owners */}
       <div className="flex items-start gap-2">
-        <ItemIcon itemId={id} name={name} className="size-10 shrink-0" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="shrink-0">
+              <ItemIcon itemId={id} name={name} className="size-10" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-72">
+            <p className="font-medium">{name}</p>
+            <ItemDescription itemId={id} />
+          </TooltipContent>
+        </Tooltip>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-xs font-medium leading-tight">{name}</span>
           {intel && <OwnerNames owners={intel.owners} />}
@@ -105,7 +122,7 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
 
       {/* Counter warning chip */}
       {intel?.countersYou && (
-        <div className="flex flex-col gap-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
+        <div className="mt-auto flex flex-col gap-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
           <div className="flex items-center gap-1">
             <AlertTriangle
               className="size-3 shrink-0 text-amber-400"
@@ -125,9 +142,6 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
           )}
         </div>
       )}
-
-      {/* Full stripped description */}
-      <ItemDescription itemId={id} />
     </div>
   );
 }
@@ -186,9 +200,12 @@ export function EnemyItemsPanel({ threats, enemyItems }: EnemyItemsPanelProps) {
       {items.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="flex flex-col gap-2">
+        // Adaptive grid: auto-fill tracks of ~12.5rem so the panel shows as many items per row as
+        // its current width allows — two-plus columns in the wide (2fr) dashboard track, collapsing
+        // to one in the compact overlay — without the player scrolling mid-game.
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-2">
           {items.map(({ id, intel }) => (
-            <li key={id}>
+            <li key={id} className="min-w-0">
               <ItemCard id={id} intel={intel} />
             </li>
           ))}
