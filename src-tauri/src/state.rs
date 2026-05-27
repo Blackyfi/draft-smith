@@ -110,7 +110,10 @@ impl SettingsState {
 
     /// Returns a clone of the current in-memory settings.
     pub fn current(&self) -> Settings {
-        self.settings.lock().unwrap().clone()
+        self.settings
+            .lock()
+            .expect("settings mutex poisoned")
+            .clone()
     }
 
     /// Persists `settings` to disk as pretty JSON (creating the parent dir as needed) and updates
@@ -122,7 +125,7 @@ impl SettingsState {
         let json = serde_json::to_string_pretty(settings)
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
         std::fs::write(&self.path, json)?;
-        *self.settings.lock().unwrap() = settings.clone();
+        *self.settings.lock().expect("settings mutex poisoned") = settings.clone();
         Ok(())
     }
 }

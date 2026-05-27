@@ -172,7 +172,7 @@ function DurabilitySection({
             ~{Math.round(durability.perCastDamage)} dmg per cast
           </p>
         )}
-        <p className="mt-1 text-[10px] text-muted-foreground/70">
+        <p className="mt-1 text-[11px] text-muted-foreground/70">
           Estimate — excludes enemy runes &amp; current HP.
         </p>
       </>
@@ -197,7 +197,7 @@ function DurabilitySection({
                 style={{ width: `${fillPct}%` }}
               />
             </div>
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
               {ehpLabel}
             </span>
           </div>
@@ -238,7 +238,7 @@ function DurabilitySection({
                 <p className="mt-0.5 text-muted-foreground">
                   ~{math.net} dmg per cast
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground/70">
+                <p className="mt-1 text-[11px] text-muted-foreground/70">
                   Estimate — excludes enemy runes &amp; current HP.
                 </p>
               </TooltipContent>
@@ -295,7 +295,7 @@ function DurabilitySection({
                   {math.after} {resistLabel} (after your pen) cuts each{" "}
                   {abilityDisplayName} cast from ~{math.rawCast} to ~{math.net}.
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground/70">
+                <p className="mt-1 text-[11px] text-muted-foreground/70">
                   {mit.label} — estimate, excludes runes &amp; current HP.
                 </p>
               </TooltipContent>

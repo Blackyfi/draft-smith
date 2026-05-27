@@ -15,7 +15,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 /// Returns the current connection / coaching status, as maintained by the Live Client poller (M2).
 #[tauri::command]
 pub fn get_status(state: State<'_, LiveState>) -> ConnectionStatus {
-    *state.status.lock().unwrap()
+    *state.status.lock().expect("status mutex poisoned")
 }
 
 /// Returns the latest engine recommendation, or `None` when there's no live game (so the FE can

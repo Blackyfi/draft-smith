@@ -30,7 +30,7 @@ function OwnerName({ name }: { name: string }) {
 function OwnerNames({ owners }: { owners: string[] }) {
   if (owners.length === 0) return null;
   return (
-    <span className="text-[10px] leading-tight text-muted-foreground">
+    <span className="text-[11px] leading-tight text-muted-foreground">
       {owners.map((o, i) => (
         <span key={o}>
           {i > 0 && ", "}
@@ -83,7 +83,7 @@ function ItemDescription({ itemId }: { itemId: number }) {
   }
   if (!text) return null;
   return (
-    <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-muted-foreground">
+    <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-muted-foreground">
       {text}
     </p>
   );
@@ -125,7 +125,7 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
           multiple rows on narrow tiles instead of overflowing the box. `min-w-0` lets the row shrink
           within the flex card. */}
       {meta?.stats && meta.stats.length > 0 && (
-        <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-[10px] leading-snug text-muted-foreground">
+        <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-[11px] leading-snug text-muted-foreground">
           {meta.stats.map((s, i) => (
             <span key={`${s.label}-${i}`} className="whitespace-nowrap">
               <span className="font-semibold tabular-nums text-foreground/80">
@@ -153,12 +153,12 @@ function ItemCard({ id, intel }: { id: number; intel: ItemIntel | undefined }) {
             </span>
           </div>
           {intel.countersYouReason && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               {intel.countersYouReason}
             </p>
           )}
           {intel.counterHint && (
-            <p className="text-[10px] text-amber-300/80">{intel.counterHint}</p>
+            <p className="text-[11px] text-amber-300/80">{intel.counterHint}</p>
           )}
         </div>
       )}

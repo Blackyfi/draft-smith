@@ -94,11 +94,11 @@ export function SkillStrip() {
                 </span>
               )}
               {skill.pointAvailable ? (
-                <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
                   Level up now
                 </span>
               ) : (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                   Next at level {skill.atLevel}
                 </span>
               )}

@@ -138,7 +138,10 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
         Err(err) => {
             // Without a client we can't poll at all; report a hard error and stop.
             log::error!("Live Client init failed: {err}");
-            *app.state::<LiveState>().status.lock().unwrap() = ConnectionStatus::Error;
+            *app.state::<LiveState>()
+                .status
+                .lock()
+                .expect("status mutex poisoned") = ConnectionStatus::Error;
             let _ = app.emit("connection-status", ConnectionStatus::Error);
             return;
         }
@@ -314,9 +317,19 @@ fn transition(
     status: ConnectionStatus,
     emit: &mut (dyn FnMut(PollEvent) + Send),
 ) {
-    let mut current = state.status.lock().unwrap();
-    if *current != status {
-        *current = status;
+    // Decide whether to emit while holding the lock, but release it *before* calling `emit` — the
+    // callback must never run under the status lock (a future emitter that touched `status` would
+    // otherwise self-deadlock).
+    let changed = {
+        let mut current = state.status.lock().expect("status mutex poisoned");
+        if *current != status {
+            *current = status;
+            true
+        } else {
+            false
+        }
+    };
+    if changed {
         emit(PollEvent::ConnectionStatus(status));
     }
 }
