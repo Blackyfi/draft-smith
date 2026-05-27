@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMetaBuild } from "@/hooks/useMetaBuild";
-import { slotToKey, slotToKeyAria, slotToLayoutKey } from "@/lib/abilityKeys";
+import { slotToKey, slotToKeyAria } from "@/lib/abilityKeys";
 import { cn } from "@/lib/utils";
 import type {
   AbilityKeys,
@@ -147,10 +147,11 @@ function rankForLetter(letter: string, ranks: AbilityRanks): number {
 /**
  * Compact skill order display: each level's slot as a small badge, then the max-priority shorthand.
  *
- * Keys follow the player's keybind settings (`abilityKeys`): AZERTY shows A/Z/E/R, and League's
- * Keyboard (WASD) movement mode shows the Q slot as "RMB" and the W slot as "Shift" — so the
- * sequence matches what they actually press, not a fixed Q/W/E/R. Multi-char labels grow from a
- * square to a pill.
+ * Both the badges and the "Max …" line follow the player's keybind settings (`abilityKeys`): AZERTY
+ * shows A/Z/E/R, and League's Keyboard (WASD) movement mode shows the Q slot as "RMB" and the W slot
+ * as "Shift" — so the keys match what they actually press, not a fixed Q/W/E/R. Multi-char badges
+ * grow from a square to a pill; the max line gains a `›` separator so "RMB›Shift›E" stays legible
+ * (single-letter mouse-mode keys stay concatenated, e.g. "QWE").
  *
  * When live `ranks` are supplied, every box the player has already invested a point in lights up —
  * the *n*th box for a letter fills once that ability reaches rank *n*. This tracks the player's
@@ -180,6 +181,21 @@ function SkillOrderLine({
   // The next point to invest is the earliest box the player hasn't fulfilled. Only meaningful once
   // we have live ranks; with none, -1 means "highlight nothing".
   const nextIndex = ranks != null ? taken.findIndex((t) => !t) : -1;
+
+  // The "Max …" priority follows the same keybind remap as the badges (keyboard mode → RMB/Shift).
+  // Single-char keys read fine concatenated ("QWE"/"AZE"); multi-char keyboard overrides need a
+  // separator to stay legible ("RMB›Shift›E").
+  const maxKeys = [...skillMaxPriority].map((c) => {
+    const parsed = asSlot(c);
+    return {
+      label: parsed ? slotToKey(parsed, abilityKeys) : c,
+      aria: parsed ? slotToKeyAria(parsed, abilityKeys) : c,
+    };
+  });
+  const maxLabel = maxKeys
+    .map((k) => k.label)
+    .join(maxKeys.some((k) => k.label.length > 1) ? "›" : "");
+  const maxAria = maxKeys.map((k) => k.aria).join(", ");
 
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -214,14 +230,11 @@ function SkillOrderLine({
         );
       })}
       {skillMaxPriority && (
-        <span className="ml-1 text-[11px] text-muted-foreground">
-          Max{" "}
-          {[...skillMaxPriority]
-            .map((c) => {
-              const parsed = asSlot(c);
-              return parsed ? slotToLayoutKey(parsed, abilityKeys) : c;
-            })
-            .join("")}
+        <span
+          className="ml-1 text-[11px] text-muted-foreground"
+          aria-label={`Max priority: ${maxAria}`}
+        >
+          Max {maxLabel}
         </span>
       )}
     </div>
