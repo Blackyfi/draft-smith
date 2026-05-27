@@ -37,7 +37,7 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
           )}
         >
           {isNext && (
-            <span className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
+            <span className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
               Next
             </span>
           )}
@@ -54,10 +54,10 @@ export function ItemCard({ step, isNext }: ItemCardProps) {
               </span>
             )}
           </div>
-          <span className="line-clamp-1 w-full text-[10px] leading-tight font-medium">
+          <span className="line-clamp-1 w-full text-[11px] leading-tight font-medium">
             {step.name}
           </span>
-          <span className="text-[9px] text-muted-foreground tabular-nums">
+          <span className="text-[11px] text-muted-foreground tabular-nums">
             {step.cost.toLocaleString()}g
           </span>
         </button>

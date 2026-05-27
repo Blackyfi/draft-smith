@@ -82,7 +82,7 @@ function MetaItemChip({ item }: { item: MetaItem }) {
       <TooltipTrigger asChild>
         <div className="flex flex-col items-center gap-0.5 w-14 shrink-0">
           <ItemIcon itemId={item.id} name={item.name} className="size-9" />
-          <span className="line-clamp-1 text-[10px] text-muted-foreground leading-tight text-center">
+          <span className="line-clamp-1 text-[11px] text-muted-foreground leading-tight text-center">
             {item.name}
           </span>
         </div>
@@ -200,7 +200,7 @@ function SkillOrderLine({
                   : `${ariaKey}, level ${i + 1}`
             }
             className={cn(
-              "flex h-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
+              "flex h-5 shrink-0 items-center justify-center rounded text-[11px] font-bold",
               multiChar ? "min-w-5 px-1" : "w-5",
               taken[i]
                 ? "bg-primary/25 text-primary ring-1 ring-inset ring-primary/50"
@@ -214,7 +214,7 @@ function SkillOrderLine({
         );
       })}
       {skillMaxPriority && (
-        <span className="ml-1 text-[10px] text-muted-foreground">
+        <span className="ml-1 text-[11px] text-muted-foreground">
           Max{" "}
           {[...skillMaxPriority]
             .map((c) => {
@@ -325,7 +325,7 @@ function MetaBuildContent({
   return (
     <div className="flex flex-col gap-3">
       {/* Advisory framing — never hidden so users always understand what this panel is. */}
-      <p className="flex items-center gap-1 text-[10px] text-muted-foreground px-1">
+      <p className="flex items-center gap-1 text-[11px] text-muted-foreground px-1">
         <BookOpen className="size-3 shrink-0" aria-hidden="true" />
         What wins on average — independent of the enemy comp.
       </p>
@@ -333,7 +333,7 @@ function MetaBuildContent({
       {/* Core build */}
       {build.coreItems.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Core build
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -347,7 +347,7 @@ function MetaBuildContent({
       {/* Starting items */}
       {build.startingItems.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Starting
           </span>
           {/* Starting builds legitimately repeat an item id (e.g. multiple Health Potions),
@@ -364,7 +364,7 @@ function MetaBuildContent({
       {/* Situational options */}
       {build.options.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Situational
           </span>
           <ul className="flex flex-col gap-1">
@@ -380,7 +380,7 @@ function MetaBuildContent({
       {/* Skill order */}
       {build.skillOrder.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Skill order
           </span>
           <div className="px-1">
@@ -395,7 +395,7 @@ function MetaBuildContent({
       )}
 
       {/* Source attribution */}
-      <div className="flex items-center gap-1 px-1 text-[10px] text-muted-foreground/60">
+      <div className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground/60">
         <ChevronRight className="size-3" aria-hidden="true" />
         Source: u.gg
       </div>
@@ -456,7 +456,7 @@ export function MetaPanel({
               {fmtWinRate(data.winRate)}
             </Badge>
             <Badge variant="secondary">{prettyRank(data.rank)}</Badge>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               {data.patch}
             </span>
           </div>
