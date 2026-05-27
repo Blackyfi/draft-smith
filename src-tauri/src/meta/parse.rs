@@ -416,6 +416,7 @@ mod tests {
                     flat_hp: 0.0,
                     flat_armor: 0.0,
                     flat_mr: 0.0,
+                    stats: Vec::new(),
                 },
             );
         }

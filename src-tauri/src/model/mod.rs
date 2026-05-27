@@ -32,7 +32,7 @@ pub use gank::GankAlert;
 // `src/types.ts`), carried inside `GankAlert`; referenced elsewhere via their `gank::` path.
 #[allow(unused_imports)]
 pub use gank::{GankAlertKind, GankStyle};
-pub use item::ItemMeta;
+pub use item::{ItemMeta, ItemStat};
 pub use meta::{MetaBuild, MetaItem, MetaItemOption};
 // `Aggressiveness`/`Theme` are part of the typed FE↔Rust settings contract (mirrored in
 // `src/types.ts`) even though the Rust core currently only names `Settings` directly.

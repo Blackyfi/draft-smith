@@ -2,6 +2,14 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.10
+
+### New features
+- **Real stat values on enemy items** — every item in the Enemy Items panel now shows its actual
+  numbers in a compact line (e.g. "18 Lethality · 200 HP · 15 Haste · 25 MS"), read straight from
+  the game's own item data, so you can see exactly how much armor, lethality, haste, or health an
+  enemy has picked up — no more guessing from the icon alone.
+
 ## 0.1.9
 
 ### New features

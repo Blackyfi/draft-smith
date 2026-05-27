@@ -41,3 +41,32 @@ export function buildEnemyItemList(
     return aC - bC;
   });
 }
+
+/**
+ * Compact display labels for DDragon stat names, so the per-item stat line stays short enough to
+ * scan at a glance (e.g. "Ability Haste" → "Haste", "Health" → "HP"). Unmapped labels pass through
+ * unchanged. Keyed on the exact DDragon label; case-sensitive by design (DDragon is consistent).
+ */
+const STAT_LABEL_ABBREVIATIONS: Record<string, string> = {
+  Health: "HP",
+  "Move Speed": "MS",
+  "Movement Speed": "MS",
+  "Ability Haste": "Haste",
+  "Magic Penetration": "Magic Pen",
+  "Armor Penetration": "Armor Pen",
+  "Attack Damage": "AD",
+  "Ability Power": "AP",
+  "Attack Speed": "Atk Speed",
+  "Critical Strike Chance": "Crit",
+  "Magic Resist": "MR",
+  "Magic Resistance": "MR",
+  "Life Steal": "Lifesteal",
+  "Heal and Shield Power": "Heal/Shield",
+  "Base Health Regen": "HP Regen",
+  "Base Mana Regen": "Mana Regen",
+};
+
+/** Returns the compact display form of a DDragon stat label, or the label itself when unmapped. */
+export function abbreviateStatLabel(label: string): string {
+  return STAT_LABEL_ABBREVIATIONS[label] ?? label;
+}
