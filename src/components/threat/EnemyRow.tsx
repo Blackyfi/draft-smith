@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import { ArrowRight, Shield, Zap } from "lucide-react";
 
 import { ChampionAvatar } from "@/components/icons/ChampionAvatar";
 import { ItemIcon } from "@/components/icons/ItemIcon";
@@ -47,6 +47,60 @@ function fmtEhp(n: number): string {
 }
 
 /**
+ * The inline damage math surfaced beside the casts chip — derived purely from the engine estimate
+ * already on `Durability`, so it stays consistent with the gauge/casts tooltips.
+ *
+ * `perCastDamage` is the *post-mitigation* damage one cast lands; inverting the engine's own
+ * `net = raw · 100/(100+after)` gives the pre-mitigation `rawCast`. `blockedPct` is the share their
+ * resist (after the player's penetration) eats — `after/(100+after)`. Returns `null` when the engine
+ * produced no per-cast number (slot not leveled / no authored nuke), matching the casts chip's gate.
+ */
+interface DamageMath {
+  /** Post-mitigation damage per cast (what actually lands). */
+  net: number;
+  /** Reconstructed pre-mitigation damage per cast. */
+  rawCast: number;
+  /** Relevant resist after the player's pen (armor/MR; 0 for true damage). */
+  after: number;
+  /** True when the nuke is true damage — no resist applies, nothing is blocked. */
+  isTrue: boolean;
+  /** Share of the player's damage the resist blocks, as a 0–100 integer. */
+  blockedPct: number;
+}
+
+function damageMath(d: Durability): DamageMath | null {
+  if (d.perCastDamage == null) return null;
+  const net = d.perCastDamage;
+  const after = d.resistAfterPen;
+  const isTrue = d.resistKind === "none";
+  const rawCast = Math.round((net * (100 + after)) / 100);
+  const blockedPct = Math.round((after / (100 + after)) * 100);
+  return { net, rawCast, after, isTrue, blockedPct };
+}
+
+/**
+ * Severity styling for the "% blocked" badge — the at-a-glance "effect on this enemy" signal.
+ * Higher block = your damage is more resisted = more alarming color. Color is always paired with
+ * the shield icon + the percentage text + a word label in the tooltip (never color alone).
+ */
+function mitigationStyle(pct: number): { className: string; label: string } {
+  if (pct >= 50)
+    return {
+      className: "border-rose-500/30 bg-rose-500/15 text-rose-300",
+      label: "heavily resisted",
+    };
+  if (pct >= 25)
+    return {
+      className: "border-amber-500/30 bg-amber-500/15 text-amber-300",
+      label: "partly resisted",
+    };
+  return {
+    className: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
+    label: "barely resisted",
+  };
+}
+
+/**
  * Durability gauge + optional casts-to-kill chip.
  *
  * The gauge is a thin progress bar normalised against the team's max effective HP, so relative
@@ -88,6 +142,10 @@ function DurabilitySection({
 
   const abilityDisplayName = durability.abilityName ?? keyLabel ?? "";
 
+  // Inline damage math beside the casts chip (raw → net · resist + % blocked).
+  const math = damageMath(durability);
+  const mit = math ? mitigationStyle(math.blockedPct) : null;
+
   // Gauge with tooltip ────────────────────────────────────────────────────────
   const gaugeTooltipBody =
     durability.castsToKill == null ? (
@@ -104,8 +162,9 @@ function DurabilitySection({
         </p>
         {resistLabel && (
           <p className="mt-0.5 text-muted-foreground">
-            ~{Math.round(durability.rawHp)} HP &middot; {Math.round(durability.resist)}{" "}
-            {resistLabel} (~{Math.round(durability.resistAfterPen)} after your pen)
+            ~{Math.round(durability.rawHp)} HP &middot;{" "}
+            {Math.round(durability.resist)} {resistLabel} (~
+            {Math.round(durability.resistAfterPen)} after your pen)
           </p>
         )}
         {durability.perCastDamage != null && (
@@ -148,38 +207,101 @@ function DurabilitySection({
         </TooltipContent>
       </Tooltip>
 
-      {/* Casts-to-kill chip — only when the engine produced a nuke estimate */}
-      {durability.castsToKill != null && keyLabel != null && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              className="w-fit cursor-default bg-amber-500/15 text-amber-300 border-amber-500/30"
-              aria-label={`Approximately ${durability.castsToKill} casts of ${abilityDisplayName} to kill`}
-            >
-              <Zap aria-hidden="true" />
-              ≈{durability.castsToKill}× {keyLabel}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-64">
-            <p className="font-medium">
-              ≈{durability.castsToKill}× {abilityDisplayName} to kill
-            </p>
-            {resistLabel && (
-              <p className="mt-0.5 text-muted-foreground">
-                ~{Math.round(durability.rawHp)} HP &middot; {Math.round(durability.resist)}{" "}
-                {resistLabel} (~{Math.round(durability.resistAfterPen)} after your pen)
-              </p>
+      {/* Damage line — only when the engine produced a per-cast nuke estimate. Wraps the
+          casts-to-kill chip together with the inline "what your nuke does to THIS enemy" math:
+          raw → net damage · their resist, and a colored "% blocked" severity badge. */}
+      {math && (
+        <div className="flex flex-wrap items-center gap-1">
+          {/* Casts-to-kill chip */}
+          {durability.castsToKill != null && keyLabel != null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  className="w-fit cursor-default bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  aria-label={`Approximately ${durability.castsToKill} casts of ${abilityDisplayName} to kill`}
+                >
+                  <Zap aria-hidden="true" />≈{durability.castsToKill}×{" "}
+                  {keyLabel}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-64">
+                <p className="font-medium">
+                  ≈{durability.castsToKill}× {abilityDisplayName} to kill
+                </p>
+                {resistLabel && (
+                  <p className="mt-0.5 text-muted-foreground">
+                    ~{Math.round(durability.rawHp)} HP &middot;{" "}
+                    {Math.round(durability.resist)} {resistLabel} (~
+                    {Math.round(durability.resistAfterPen)} after your pen)
+                  </p>
+                )}
+                <p className="mt-0.5 text-muted-foreground">
+                  ~{math.net} dmg per cast
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground/70">
+                  Estimate — excludes enemy runes &amp; current HP.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* raw → net (· resist) — the calculation, made visible */}
+          <Badge
+            variant="outline"
+            className="cursor-default gap-0.5 tabular-nums text-muted-foreground"
+            aria-label={
+              math.isTrue
+                ? `${math.net} true damage per cast`
+                : `${math.rawCast} raw damage reduced to ${math.net} per cast after ${math.after} ${resistLabel}`
+            }
+          >
+            {math.isTrue ? (
+              <>
+                {math.net}
+                <span className="ml-0.5 text-muted-foreground/70">true</span>
+              </>
+            ) : (
+              <>
+                {math.rawCast}
+                <ArrowRight
+                  aria-hidden="true"
+                  className="text-muted-foreground/60"
+                />
+                <span className="font-medium text-foreground">{math.net}</span>
+                <span className="ml-0.5 text-muted-foreground/60">
+                  · {math.after} {resistLabel}
+                </span>
+              </>
             )}
-            {durability.perCastDamage != null && (
-              <p className="mt-0.5 text-muted-foreground">
-                ~{Math.round(durability.perCastDamage)} dmg per cast
-              </p>
-            )}
-            <p className="mt-1 text-[10px] text-muted-foreground/70">
-              Estimate — excludes enemy runes &amp; current HP.
-            </p>
-          </TooltipContent>
-        </Tooltip>
+          </Badge>
+
+          {/* % blocked severity badge — the at-a-glance "effect on this enemy" signal */}
+          {!math.isTrue && mit && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  className={`cursor-default tabular-nums ${mit.className}`}
+                  aria-label={`${math.blockedPct}% of your ${abilityDisplayName} damage blocked by their ${resistLabel}`}
+                >
+                  <Shield aria-hidden="true" />
+                  {math.blockedPct}%
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-64">
+                <p className="font-medium">
+                  {math.blockedPct}% of your damage blocked
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {math.after} {resistLabel} (after your pen) cuts each{" "}
+                  {abilityDisplayName} cast from ~{math.rawCast} to ~{math.net}.
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground/70">
+                  {mit.label} — estimate, excludes runes &amp; current HP.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       )}
     </div>
   );

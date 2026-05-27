@@ -74,8 +74,9 @@
 
 @theme inline {
   /* Shared max width of the centered content column (header / main / footer stay aligned).
-     Wide enough for the in-game three-column dashboard (build | awareness | enemy items). */
-  --container-app: 72rem;
+     Wide enough for the in-game three-column dashboard where the enemy-items column is twice as
+     wide (build | awareness | enemy-items×2) and holds a multi-column item grid. */
+  --container-app: 88rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

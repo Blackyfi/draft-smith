@@ -2,6 +2,24 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.9
+
+### New features
+- **See what your spell actually does to each enemy** — under every enemy's survivability bar, next
+  to the "≈N× spell to kill" estimate, there's now a small damage read-out: your spell's raw damage
+  → what actually lands after their armor or magic resist (with your penetration already counted in),
+  plus a colored badge showing how much of your damage their defenses block. Green means you shred
+  them; amber or red means they're resisting you hard. True damage is shown as-is, since nothing
+  blocks it.
+
+### Improvements
+- **Roomier enemy-items view** — the in-game window is wider and the enemy-items column now spans
+  twice the width as a multi-column grid, so you can see far more of the enemy team's purchases at a
+  glance without scrolling. Item tiles are more compact, with the full item text one hover away.
+- **Situational swaps moved beside your build** — situational swaps now sit under the skill order in
+  the left column, so the enemy-threats list can grow long late in the game without pushing your
+  swaps off-screen.
+
 ## 0.1.8
 
 ### New features

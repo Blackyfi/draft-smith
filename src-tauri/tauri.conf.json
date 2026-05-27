@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DraftSmith",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "identifier": "com.draftsmith.app",
   "build": {
     "frontendDist": "../dist",
@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "DraftSmith",
-        "width": 880,
+        "width": 1180,
         "height": 1000,
         "minWidth": 380,
         "minHeight": 560,
