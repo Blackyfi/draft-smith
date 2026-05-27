@@ -25,6 +25,14 @@ import selfsigned from "selfsigned";
 const HOST = "127.0.0.1";
 const PORT = 2999;
 const STEP_INTERVAL_MS = 7000; // advance the purchase timeline every 7s (poller fires every 3s).
+// Run the game clock faster than wall-time. The gank evaluator gates the *first*-gank alert on a
+// real game-time threshold (an early ganker needs game_time ≥ 150s / 2:30); at 1× you'd wait over
+// two minutes for it, by which point the jungler has already ramped past level 6 and the two
+// windows (first-gank, then level-6 ult) coalesce into a single alert. Compressing the clock makes
+// game-time milestones arrive while levels are still low, so you SEE both alerts fire in order,
+// seconds apart. Clock-only (no items/level/roster change) — so it still exercises the poller's
+// "drift between steps must not recompute" diff.
+const CLOCK_SCALE = 6;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(
@@ -51,6 +59,8 @@ const FRESH_START_GAMETIME = 15; // ~0:15 — minions haven't even met; truly th
 const capturedLoadouts = state.allPlayers.map((p) => ({
   championName: p.championName,
   items: p.items,
+  // Captured (mid-game) level is the cap each player ramps back up to over the timeline.
+  level: p.level,
 }));
 state.allPlayers.forEach((p) => {
   p.items = [];
@@ -59,6 +69,12 @@ state.allPlayers.forEach((p) => {
   // both would read as "Fed" from the opening whistle. KDA is ramped back up over the Act 2
   // timeline so you can watch the Fed pills (and the resulting build/focus shift) appear live.
   p.scores = { kills: 0, deaths: 0, assists: 0, creepScore: 0, wardScore: 0 };
+  // Likewise reset EVERY player's level to 1. The captured fixture has enemies at level 6–9; left
+  // untouched they'd read as already-spiked from the opening whistle — the enemy jungler (Vi, lvl 8)
+  // would trip the level-6 "ult online" gank alert at 0:15 while our own champ is still level 2.
+  // Levels ramp back toward each captured cap over the timeline (see rampLevels), so the gank alert
+  // fires when the jungler actually crosses 6, mid-demo.
+  p.level = 1;
 });
 state.gameData.gameTime = FRESH_START_GAMETIME;
 
@@ -139,6 +155,23 @@ function levelUp() {
   if (cur < 18) state.activePlayer.level = cur + 1;
 }
 
+/**
+ * Ramp every player's level up by one per tick toward its captured cap.
+ *
+ * This runs on the STEP_INTERVAL_MS cadence (not every poll), so levels stay constant *between*
+ * timeline steps — preserving the property the mock exists to demo: a clock-only change between
+ * steps must NOT trigger a recompute (the poller's diff signature includes level, so bumping it
+ * every poll would defeat that). The active player's own level is driven separately by `levelUp`;
+ * here we keep its `allPlayers` mirror in sync and advance the enemies alongside it, so the enemy
+ * jungler crosses level 6 mid-demo and the gank alert fires at a realistic moment.
+ */
+function rampLevels() {
+  state.allPlayers.forEach((p, i) => {
+    const cap = capturedLoadouts[i].level;
+    if (p.level < cap) p.level += 1;
+  });
+}
+
 // Level up every STEP_INTERVAL_MS (same cadence as purchases) to keep the demo snappy.
 // We interleave the level-up loop with the purchase timeline so both progress together.
 
@@ -217,6 +250,8 @@ let step = 0;
 const timer = setInterval(() => {
   // Always advance skill progression on each tick (one pending point spent, then level up).
   levelUp();
+  // Ramp every roster level toward its captured cap on the same cadence (enemy jungler too).
+  rampLevels();
 
   if (step >= TIMELINE.length) {
     // No more purchases; keep the timer alive so levels continue ticking.
@@ -247,8 +282,11 @@ const server = createServer(
       res.writeHead(404).end();
       return;
     }
-    // Advance the clock to "now" so the header time moves and the diff sees clock-only drift.
-    state.gameData.gameTime = baseGameTime + (Date.now() - startedAt) / 1000;
+    // Advance the clock to "now" (scaled) so the header time moves and the diff sees clock-only
+    // drift. CLOCK_SCALE compresses the timeline so the first-gank time gate is reached while the
+    // jungler is still below level 6 (see CLOCK_SCALE docs) — both gank alerts then fire in order.
+    state.gameData.gameTime =
+      baseGameTime + ((Date.now() - startedAt) / 1000) * CLOCK_SCALE;
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(state));
   },
