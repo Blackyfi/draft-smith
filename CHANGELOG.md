@@ -2,6 +2,17 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.12
+
+### Improvements
+- **Larger, easier-to-read text** — the small labels across the build path, Meta panel, skill order,
+  and enemy panels are now a touch bigger, so they stay legible at a glance mid-game.
+
+### Fixes
+- **Tighter security and steadier under errors** — the app window now runs under a strict
+  content-security policy, and internal locking was hardened so a transient hiccup can't cascade
+  into a crash.
+
 ## 0.1.11
 
 ### Fixes
