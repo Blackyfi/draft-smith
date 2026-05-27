@@ -64,6 +64,8 @@ const STAT_LABEL_ABBREVIATIONS: Record<string, string> = {
   "Heal and Shield Power": "Heal/Shield",
   "Base Health Regen": "HP Regen",
   "Base Mana Regen": "Mana Regen",
+  "Gold Per 10 Seconds": "Gold/10",
+  "Gold Per 10": "Gold/10",
 };
 
 /** Returns the compact display form of a DDragon stat label, or the label itself when unmapped. */
