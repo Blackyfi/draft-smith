@@ -5,7 +5,13 @@
 //! These reconstruct *display* state from the facts already in a `MatchRecord`; they are presentation
 //! logic, not the recommendation engine, and touch neither it nor its data-driven invariant.
 
-import type { ItemEvent, LevelEvent, MatchEvent, MatchPlayer } from "@/types";
+import type {
+  DiagnosticSnapshot,
+  ItemEvent,
+  LevelEvent,
+  MatchEvent,
+  MatchPlayer,
+} from "@/types";
 
 /** One owned item at a point in time — the subset of {@link ItemEvent} the UI needs to render. */
 export interface OwnedItem {
@@ -68,6 +74,27 @@ export function levelAt(
     }
   }
   return level;
+}
+
+/**
+ * The most recent durability-diagnostics snapshot recorded at or before game time `t` (the engine
+ * recomputes on each item/level change, so snapshots are sparse). Returns `null` when none have been
+ * recorded yet by `t` — e.g. before the first recompute, or for records predating the feature.
+ */
+export function diagnosticAt(
+  diagnostics: DiagnosticSnapshot[],
+  t: number,
+): DiagnosticSnapshot | null {
+  let latest: DiagnosticSnapshot | null = null;
+  for (const snap of diagnostics) {
+    if (
+      snap.gameTime <= t &&
+      (latest === null || snap.gameTime >= latest.gameTime)
+    ) {
+      latest = snap;
+    }
+  }
+  return latest;
 }
 
 /**

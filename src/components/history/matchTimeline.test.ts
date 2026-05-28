@@ -1,15 +1,43 @@
 import { describe, expect, it } from "vitest";
 
-import type { ItemEvent, LevelEvent, MatchEvent, MatchPlayer } from "@/types";
+import type {
+  DiagnosticSnapshot,
+  ItemEvent,
+  LevelEvent,
+  MatchEvent,
+  MatchPlayer,
+} from "@/types";
 
 import {
   buildNameIndex,
+  diagnosticAt,
   eventMarkers,
   inventoryAt,
   levelAt,
   playerForName,
   runningScores,
 } from "./matchTimeline";
+
+describe("diagnosticAt", () => {
+  const snap = (gameTime: number): DiagnosticSnapshot => ({
+    gameTime,
+    ddragonReady: true,
+    selfMagicPenPercent: 0,
+    selfMagicPenFlat: 0,
+    selfArmorPenPercent: 0,
+    selfArmorPenFlat: 0,
+    enemies: [],
+  });
+
+  it("returns the latest snapshot at or before t, null before any", () => {
+    const diags = [snap(60), snap(300), snap(600)];
+    expect(diagnosticAt(diags, 30)).toBeNull();
+    expect(diagnosticAt(diags, 60)?.gameTime).toBe(60);
+    expect(diagnosticAt(diags, 450)?.gameTime).toBe(300);
+    expect(diagnosticAt(diags, 9999)?.gameTime).toBe(600);
+    expect(diagnosticAt([], 100)).toBeNull();
+  });
+});
 
 const item = (
   playerKey: string,

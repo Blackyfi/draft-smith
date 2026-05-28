@@ -2,6 +2,22 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.17
+
+### Fixes
+- **Enemy magic resist and armor are no longer ignored.** The durability gauge and "casts to kill"
+  treated every enemy as if you fully penetrated their resistances, so an enemy who bought magic
+  resist (or armor) showed 0 effective resist and your damage looked far higher than it really was.
+  Resistances now count, so the effective-HP bar, the damage-per-cast numbers, and the "% blocked"
+  badge reflect what the enemy actually built.
+
+### New features
+- **Durability diagnostics in match history** — open a saved match and scroll to the new
+  "Durability diagnostics (MR)" panel. For each enemy at the scrubbed moment it shows what the app
+  worked out: their resolved magic resist, armor and HP, versus the resist your durability gauge
+  displayed, plus your penetration. If an enemy's defenses didn't resolve, the row is flagged — so
+  it's easy to confirm enemy resistances are being read correctly.
+
 ## 0.1.16
 
 ### New features

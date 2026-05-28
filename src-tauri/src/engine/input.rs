@@ -28,8 +28,10 @@ pub struct EngineInput {
 }
 
 /// The active player's offensive stats the durability estimator reasons over — abstract numbers,
-/// no champion identity. The `*_percent` pen values are fractions in `0.0..=1.0`; flat pen already
-/// includes lethality-derived armor pen (mirrors the Live Client `championStats`).
+/// no champion identity. The `*_percent` pen values are the **fraction of the enemy's resist the
+/// player penetrates**, in `0.0..=1.0` (`0.0` = none, `0.4` = 40% ignored) — the engine's
+/// convention, which `from_all_game_data` derives from the Live Client's *opposite* multiplier (see
+/// there). Flat pen already includes lethality-derived armor pen.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SelfDamageStats {
     pub ability_power: f32,
@@ -146,9 +148,15 @@ impl EngineInput {
                     ability_power: s.ability_power,
                     attack_damage: s.attack_damage,
                     magic_pen_flat: s.magic_penetration_flat,
-                    magic_pen_percent: s.magic_penetration_percent,
+                    // The Live Client reports `*PenetrationPercent` as the fraction of the enemy's
+                    // resist that STILL APPLIES (`1.0` = nothing penetrated, lower = more pen), the
+                    // inverse of the engine's "fraction penetrated" convention. Invert here so the
+                    // durability formula's `resist · (1 - pct)` is correct — without this, a baseline
+                    // `1.0` made `1 - 1.0 = 0`, zeroing every enemy's resist from level 1 (the
+                    // "enemy MR shows 0" bug). Clamped in case a future payload reports out of range.
+                    magic_pen_percent: (1.0 - s.magic_penetration_percent).clamp(0.0, 1.0),
                     armor_pen_flat: s.armor_penetration_flat,
-                    armor_pen_percent: s.armor_penetration_percent,
+                    armor_pen_percent: (1.0 - s.armor_penetration_percent).clamp(0.0, 1.0),
                 }
             }),
         })
@@ -188,5 +196,30 @@ mod tests {
         // A spectated/partial payload with no identifiable active player → nothing to recommend.
         let data: AllGameData = serde_json::from_str("{}").unwrap();
         assert!(EngineInput::from_all_game_data(&data).is_none());
+    }
+
+    #[test]
+    fn live_client_penetration_multiplier_is_inverted_to_fraction_penetrated() {
+        // Regression for the "enemy MR shows 0" bug: the Live Client reports
+        // `*PenetrationPercent` as the fraction of resist that STILL APPLIES (1.0 = no pen). The
+        // engine wants the fraction PENETRATED, so `from_all_game_data` must invert it — otherwise a
+        // baseline 1.0 made `resist · (1 - 1.0) = 0`, zeroing every enemy's resist.
+        let json = r#"{
+            "activePlayer": {
+                "riotIdGameName": "Me",
+                "championStats": {
+                    "magicPenetrationPercent": 1.0, "magicPenetrationFlat": 18.0,
+                    "armorPenetrationPercent": 0.6, "armorPenetrationFlat": 0.0
+                }
+            },
+            "allPlayers": [ { "championName": "Ahri", "riotId": "Me#EUW", "team": "ORDER" } ]
+        }"#;
+        let data: AllGameData = serde_json::from_str(json).unwrap();
+        let input = EngineInput::from_all_game_data(&data).expect("self is identifiable");
+        // No magic pen (multiplier 1.0) → 0% penetrated; flat passes through.
+        assert_eq!(input.self_stats.magic_pen_percent, 0.0);
+        assert_eq!(input.self_stats.magic_pen_flat, 18.0);
+        // 0.6 multiplier (40% armor pen) → 0.4 penetrated (within fp tolerance).
+        assert!((input.self_stats.armor_pen_percent - 0.4).abs() < 1e-6);
     }
 }

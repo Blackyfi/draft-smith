@@ -13,8 +13,8 @@ use crate::live_client::model::{AllGameData, GameEvent, Player};
 use crate::model::engine::AbilitySlot;
 
 use super::model::{
-    ItemEvent, ItemEventKind, ItemRef, LevelEvent, MatchEvent, MatchPlayer, MatchRecord,
-    MatchResult, SkillEvent,
+    DiagnosticSnapshot, ItemEvent, ItemEventKind, ItemRef, LevelEvent, MatchEvent, MatchPlayer,
+    MatchRecord, MatchResult, SkillEvent,
 };
 
 /// Games shorter than this (in seconds of observed game time) are treated as aborted/remade lobbies
@@ -86,6 +86,11 @@ pub struct MatchRecorder {
     events: Vec<MatchEvent>,
     seen_event_ids: HashSet<u32>,
     result: MatchResult,
+
+    /// Per-recompute enemy-durability diagnostics (the MR debug log). Built by the poller from the
+    /// engine output (it has the resolved defenses + DDragon readiness the recorder can't see) and
+    /// handed in via [`record_diagnostic`](Self::record_diagnostic).
+    diagnostics: Vec<DiagnosticSnapshot>,
 
     /// Wall-clock time (Unix epoch ms) recording began. Supplied by the poller at creation — the
     /// recorder never reads the clock itself, preserving its clockless/testable design.
@@ -274,6 +279,12 @@ impl MatchRecorder {
         }
     }
 
+    /// Appends one durability-diagnostics snapshot (the MR debug log). The poller builds it from the
+    /// engine output after each recompute; the recorder just stores it, staying a dumb accumulator.
+    pub fn record_diagnostic(&mut self, snapshot: DiagnosticSnapshot) {
+        self.diagnostics.push(snapshot);
+    }
+
     /// Whether this recorder holds a game worth persisting: a real, identified game past the
     /// duration floor and in a recordable mode (not the dev mock / Tutorial / Practice Tool).
     pub fn is_worth_saving(&self) -> bool {
@@ -333,6 +344,7 @@ impl MatchRecorder {
             level_timeline: self.level_timeline,
             skill_timeline: self.skill_timeline,
             events: self.events,
+            diagnostics: self.diagnostics,
         }
     }
 }
@@ -499,6 +511,38 @@ mod tests {
         assert_eq!(me.final_items.len(), 1);
         assert_eq!(record.self_champion, "Ahri");
         assert!(record.id.starts_with("1700000000000_Ahri"));
+    }
+
+    #[test]
+    fn diagnostics_are_carried_into_the_record() {
+        use crate::history::model::{DiagnosticSnapshot, EnemyDiagnostic};
+        let mut rec = MatchRecorder::default();
+        rec.observe(&parse(&snapshot(120.0, "[]", 1, 2, "[]")));
+        rec.record_diagnostic(DiagnosticSnapshot {
+            game_time: 120.0,
+            ddragon_ready: true,
+            self_nuke: Some("Q · magic".into()),
+            self_magic_pen_percent: 0.0,
+            self_magic_pen_flat: 0.0,
+            self_armor_pen_percent: 0.0,
+            self_armor_pen_flat: 0.0,
+            enemies: vec![EnemyDiagnostic {
+                champion: "Sion".into(),
+                level: 13,
+                items: vec![1033, 3173],
+                defenses_resolved: true,
+                hp: Some(2200),
+                armor: Some(82),
+                mr: Some(104),
+                resist_kind: Some("magic".into()),
+                resist: Some(104),
+                resist_after_pen: Some(104),
+            }],
+        });
+        let record = rec.into_record(0, "v".into(), "p".into());
+        assert_eq!(record.diagnostics.len(), 1);
+        assert_eq!(record.diagnostics[0].enemies[0].mr, Some(104));
+        assert_eq!(record.diagnostics[0].enemies[0].resist_after_pen, Some(104));
     }
 
     #[test]

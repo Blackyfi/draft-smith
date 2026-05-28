@@ -12,10 +12,11 @@ mod gank;
 
 use crate::engine::input::ResolvedDefenses;
 use crate::engine::{self, EngineInput};
-use crate::history::model::MatchSummary;
+use crate::history::model::{DiagnosticSnapshot, EnemyDiagnostic, MatchSummary};
 use crate::history::MatchRecorder;
 use crate::live_client::model::AllGameData;
 use crate::live_client::LiveClient;
+use crate::model::engine::{DamageType, ResistKind};
 use crate::model::settings::{MAX_POLL_INTERVAL_SECS, MIN_POLL_INTERVAL_SECS};
 use crate::model::{ConnectionStatus, GameStateSummary, GankAlert, Recommendation};
 use crate::rules::RuleSet;
@@ -298,8 +299,10 @@ async fn poll_once(
                     // Resolve enemy defenses from DDragon and inject them so the engine can estimate
                     // durability. Done only here on the `changed` branch (not per poll), and only
                     // when DDragon data is present — the no-DDragon path leaves defenses `None`.
+                    let mut ddragon_ready = false;
                     if let Some(ddragon) = ddragon {
                         if let Some(resolved) = ddragon.data.read().await.clone() {
+                            ddragon_ready = true;
                             for enemy in &mut input.enemies {
                                 if let Some((hp, armor, mr)) = crate::ddragon::enemy_defenses(
                                     &enemy.champion,
@@ -313,6 +316,17 @@ async fn poll_once(
                         }
                     }
                     let rec = engine::recommend(&input, rules);
+                    // Capture the durability/MR resolution as a diagnostic snapshot (the MR debug
+                    // log) BEFORE `rec` is moved out, correlating each enemy's resolved defenses with
+                    // the resist the gauge would display. Pushed onto the recorder under a brief lock
+                    // (never held across an `.await`).
+                    let snapshot = durability_diagnostic(&data, &input, &rec, rules, ddragon_ready);
+                    {
+                        let mut guard = state.recorder.lock().expect("recorder mutex poisoned");
+                        if let Some(recorder) = guard.as_mut() {
+                            recorder.record_diagnostic(snapshot);
+                        }
+                    }
                     *state.recommendation.write().await = Some(rec.clone());
                     emit(PollEvent::RecommendationUpdated(rec));
                 }
@@ -334,6 +348,79 @@ async fn poll_once(
             log::warn!("Live Client poll failed: {err}");
             transition(state, ConnectionStatus::Error, emit);
         }
+    }
+}
+
+/// Builds one durability-diagnostics snapshot (the MR debug log) from a recompute: the resolved
+/// defenses on each enemy (`input`) correlated with the resist the gauge would actually display
+/// (`rec.threats`), plus whether DDragon was ready and the player's authored nuke. Purely a
+/// debugging projection — it reads already-computed values and branches only on abstract enums
+/// (`DamageType`/`ResistKind`), never a champion/item name, so the data-driven invariant holds.
+fn durability_diagnostic(
+    data: &AllGameData,
+    input: &EngineInput,
+    rec: &Recommendation,
+    rules: &RuleSet,
+    ddragon_ready: bool,
+) -> DiagnosticSnapshot {
+    let self_nuke = rules.ability_damage(&input.self_champion).map(|a| {
+        let dmg = match a.damage_type {
+            DamageType::Physical => "physical",
+            DamageType::Magic => "magic",
+            DamageType::Mixed => "mixed",
+            DamageType::True => "true",
+        };
+        format!("{:?} · {dmg}", a.slot)
+    });
+    let enemies = input
+        .enemies
+        .iter()
+        .zip(&rec.threats)
+        .map(|(enemy, threat)| {
+            let durability = threat.durability.as_ref();
+            EnemyDiagnostic {
+                champion: enemy.champion.clone(),
+                level: enemy.level,
+                items: enemy.items.clone(),
+                defenses_resolved: enemy.defenses.is_some(),
+                hp: enemy
+                    .defenses
+                    .as_ref()
+                    .map(|d| d.hp.max(0.0).round() as u32),
+                armor: enemy
+                    .defenses
+                    .as_ref()
+                    .map(|d| d.armor.max(0.0).round() as u32),
+                mr: enemy
+                    .defenses
+                    .as_ref()
+                    .map(|d| d.mr.max(0.0).round() as u32),
+                resist_kind: durability.map(|d| {
+                    match d.resist_kind {
+                        ResistKind::Armor => "armor",
+                        ResistKind::Magic => "magic",
+                        ResistKind::None => "none",
+                    }
+                    .to_string()
+                }),
+                resist: durability.map(|d| d.resist),
+                resist_after_pen: durability.map(|d| d.resist_after_pen),
+            }
+        })
+        .collect();
+    // Record the pen values RAW from the Live Client (not the engine's inverted `self_stats`), so the
+    // debug log shows exactly what the API sent — `*PenetrationPercent` is the multiplier for resist
+    // that still applies (`1.0` = no pen).
+    let pen = data.active_player.as_ref().map(|a| &a.champion_stats);
+    DiagnosticSnapshot {
+        game_time: data.game_data.game_time,
+        ddragon_ready,
+        self_nuke,
+        self_magic_pen_percent: pen.map_or(0.0, |p| p.magic_penetration_percent),
+        self_magic_pen_flat: pen.map_or(0.0, |p| p.magic_penetration_flat),
+        self_armor_pen_percent: pen.map_or(0.0, |p| p.armor_penetration_percent),
+        self_armor_pen_flat: pen.map_or(0.0, |p| p.armor_penetration_flat),
+        enemies,
     }
 }
 

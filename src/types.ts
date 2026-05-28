@@ -582,6 +582,65 @@ export interface MatchRecord {
   /** Skill-point spends by the local player, in order. */
   skillTimeline: SkillEvent[];
   events: MatchEvent[];
+  /** Per-recompute enemy-durability resolution diagnostics (the MR debug log). Defaults to `[]`
+   *  for records written before this field existed. */
+  diagnostics: DiagnosticSnapshot[];
+}
+
+/**
+ * Mirrors `EnemyDiagnostic` in `src-tauri/src/history/model.rs` (serde `camelCase`).
+ * One enemy's durability/MR resolution at a single recompute — what the engine actually produced.
+ */
+export interface EnemyDiagnostic {
+  /** Live Client `championName` (DDragon id) the resolution was keyed on. */
+  champion: string;
+  level: number;
+  /** Owned item ids at this recompute (the input to MR/armor resolution). */
+  items: number[];
+  /** True when DDragon resolved this enemy's base + item defenses; false ⇒ no gauge (prime
+   *  suspect for "no MR"). */
+  defensesResolved: boolean;
+  /** Resolved total HP at this level + items. */
+  hp?: number;
+  /** Resolved total armor. */
+  armor?: number;
+  /** Resolved total magic resist (base + item MR) — the number this diagnostic exists to verify. */
+  mr?: number;
+  /** Which resist the gauge applies vs the player's damage ("magic" | "armor" | "none"). */
+  resistKind?: ResistKind;
+  /** The resist the gauge displays before pen; for a magic-damage player this should equal `mr`. */
+  resist?: number;
+  /** The resist *after* the player's penetration — the number the damage badge shows most
+   *  prominently. If 0 while `resist` is large, penetration was mis-applied (prime "MR shows 0"
+   *  suspect). */
+  resistAfterPen?: number;
+}
+
+/**
+ * Mirrors `DiagnosticSnapshot` in `src-tauri/src/history/model.rs` (serde `camelCase`).
+ * A point-in-time capture of enemy-durability resolution, recorded on each recompute — a debug aid
+ * for verifying whether enemy MR is being calculated and, if not, where it drops.
+ */
+export interface DiagnosticSnapshot {
+  /** Seconds since game start at this recompute. */
+  gameTime: number;
+  /** Whether resolved DDragon data was available — defenses can't resolve without it. */
+  ddragonReady: boolean;
+  /** The player's authored nuke as "<slot> · <damageType>" (e.g. "Q · magic"), or absent when
+   *  unauthored — when absent the gauge applies no resist (raw HP only). */
+  selfNuke?: string;
+  /** Player's magic penetration percent, raw from Live Client `championStats` — the fraction of the
+   *  enemy's resist that still applies (`1.0` = no penetration, lower = more). The engine inverts it
+   *  to a "fraction penetrated"; recorded raw so that inversion can be audited. */
+  selfMagicPenPercent: number;
+  /** Player's flat magic penetration, raw. */
+  selfMagicPenFlat: number;
+  /** Player's armor penetration percent, raw (same unit question, for an AD player). */
+  selfArmorPenPercent: number;
+  /** Player's flat armor penetration, raw. */
+  selfArmorPenFlat: number;
+  /** One entry per enemy, in roster order. */
+  enemies: EnemyDiagnostic[];
 }
 
 /**
