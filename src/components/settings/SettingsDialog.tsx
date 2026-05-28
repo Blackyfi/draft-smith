@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -10,6 +11,11 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -89,10 +95,22 @@ export function SettingsDialog() {
   const [refreshPending, setRefreshPending] = useState(false);
   const [resetPending, setResetPending] = useState(false);
 
+  // On-disk DDragon cache size, shown in the Reset button. Fetched only while the dialog is open,
+  // and refetched after a refresh/reset since both change what's on disk.
+  const cacheSize = useQuery({
+    queryKey: ["ddragon-cache-size"],
+    queryFn: api.getDdragonCacheSize,
+    enabled: open,
+    staleTime: 30_000,
+  });
+  const cacheMb =
+    cacheSize.data != null ? (cacheSize.data / (1024 * 1024)).toFixed(1) : null;
+
   async function handleRefresh() {
     setRefreshPending(true);
     try {
       const status = await api.forceRefreshDdragon();
+      void cacheSize.refetch();
       toast.success(
         status === "ready"
           ? "Patch data refreshed"
@@ -112,6 +130,7 @@ export function SettingsDialog() {
     setResetPending(true);
     try {
       const status = await api.resetDdragonCache();
+      void cacheSize.refetch();
       toast.success("Patch cache cleared and rebuilt", {
         description: `Status: ${status}`,
       });
@@ -428,8 +447,8 @@ export function SettingsDialog() {
             <p className="text-[11px] text-muted-foreground">
               Keyboard movement uses{" "}
               {MOVEMENT_KEYS_LABEL[settings.abilityKeys.layout]} to move, so the
-              skill coach shows your Q on right-click (RMB) and W on Shift; E and
-              R keep their layout keys.
+              skill coach shows your Q on right-click (RMB) and W on Shift; E
+              and R keep their layout keys.
             </p>
           </div>
 
@@ -437,37 +456,68 @@ export function SettingsDialog() {
           <div className="grid gap-2">
             <Label>Patch data</Label>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshPending}
-                aria-busy={refreshPending}
-                className="gap-1.5"
-              >
-                <RefreshCwIcon
-                  className={
-                    refreshPending ? "animate-spin size-3.5" : "size-3.5"
-                  }
-                  aria-hidden="true"
-                />
-                {refreshPending ? "Refreshing..." : "Refresh patch data"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                disabled={resetPending}
-                aria-busy={resetPending}
-                className="gap-1.5"
-              >
-                <DatabaseIcon className="size-3.5" aria-hidden="true" />
-                {resetPending ? "Resetting..." : "Reset cache"}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={refreshPending}
+                    aria-busy={refreshPending}
+                    className="gap-1.5"
+                  >
+                    <RefreshCwIcon
+                      className={
+                        refreshPending ? "animate-spin size-3.5" : "size-3.5"
+                      }
+                      aria-hidden="true"
+                    />
+                    {refreshPending ? "Refreshing..." : "Refresh patch data"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-64">
+                  <p className="font-medium">Refresh patch data</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Use right after a new League patch, or if item/champion
+                    names or icons look out of date. Checks for a newer patch
+                    and downloads it; your current data stays if nothing&apos;s
+                    new.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    disabled={resetPending}
+                    aria-busy={resetPending}
+                    className="gap-1.5"
+                  >
+                    <DatabaseIcon className="size-3.5" aria-hidden="true" />
+                    {resetPending
+                      ? "Resetting..."
+                      : cacheMb != null
+                        ? `Reset cache (${cacheMb} MB)`
+                        : "Reset cache"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-64">
+                  <p className="font-medium">Reset cache</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Use only if patch data looks corrupted or stuck and a
+                    refresh didn&apos;t fix it. Deletes all cached data
+                    {cacheMb != null ? ` (${cacheMb} MB)` : ""} and re-downloads
+                    everything from scratch.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <p className="text-[11px] text-muted-foreground">
               Refresh checks for a new patch and downloads if available. Reset
-              cache wipes local data and re-downloads everything.
+              cache wipes local data and re-downloads everything. Hover each
+              button for when to use it.
             </p>
           </div>
 

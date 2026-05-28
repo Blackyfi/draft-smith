@@ -39,6 +39,9 @@ export const api = {
   /** The cached DDragon patch version (e.g. "14.10.1"), or `null` before data has loaded. */
   getDdragonVersion: () => invoke<string | null>("get_ddragon_version"),
 
+  /** Total on-disk size of the DDragon cache in bytes (item/champion data + downloaded icons). */
+  getDdragonCacheSize: () => invoke<number>("get_ddragon_cache_size"),
+
   /** Current user settings (sanitized by Rust). */
   getSettings: () => invoke<Settings>("get_settings"),
 
