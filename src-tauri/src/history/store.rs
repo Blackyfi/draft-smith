@@ -134,6 +134,7 @@ mod tests {
             level_timeline: Vec::new(),
             skill_timeline: Vec::new(),
             events: Vec::new(),
+            diagnostics: Vec::new(),
         }
     }
 

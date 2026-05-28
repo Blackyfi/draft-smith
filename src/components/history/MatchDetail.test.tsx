@@ -102,6 +102,7 @@ const RECORD: MatchRecord = {
     },
     { gameTime: 1694, kind: "GameEnd" },
   ],
+  diagnostics: [],
 };
 
 function mockCommon() {

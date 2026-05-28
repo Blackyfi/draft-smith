@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ChevronLeft,
   Clock,
   ListOrdered,
   ScrollText,
+  ShieldQuestion,
   ShoppingBag,
   Swords,
   Users,
@@ -24,6 +26,8 @@ import { slotToKey } from "@/lib/abilityKeys";
 import { useUiStore } from "@/store/ui";
 import type {
   AbilityKeys,
+  DiagnosticSnapshot,
+  EnemyDiagnostic,
   ItemEvent,
   LevelEvent,
   MatchPlayer,
@@ -44,6 +48,7 @@ import { MatchScrubber } from "./MatchScrubber";
 import {
   type RunningScore,
   buildNameIndex,
+  diagnosticAt,
   eventMarkers,
   inventoryAt,
   levelAt,
@@ -341,6 +346,146 @@ function EventLog({
   );
 }
 
+/**
+ * One enemy's durability/MR resolution at the scrubbed moment. The headline is the resolved magic
+ * resist (base + item MR); the "shown" line is the resist the in-game gauge actually displayed vs
+ * the player's damage type. A mismatch (resolved MR > 0 but a magic gauge showing 0), or
+ * `defensesResolved=false`, is exactly the "no MR" symptom — flagged in amber so it stands out.
+ */
+function EnemyDiagRow({ diag }: { diag: EnemyDiagnostic }) {
+  const champion = useChampionName(diag.champion);
+  const hasResist = diag.resistKind === "magic" || diag.resistKind === "armor";
+  const resistWord = diag.resistKind === "magic" ? "MR" : "armor";
+  // The bug signature: a real resist was resolved (resist > 0) but penetration wiped it to 0 after
+  // pen — the number the damage badge shows. Or defenses never resolved at all.
+  const penCollapsed =
+    hasResist && (diag.resist ?? 0) > 0 && (diag.resistAfterPen ?? 0) === 0;
+  const flagged = !diag.defensesResolved || penCollapsed;
+
+  return (
+    <li
+      className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs ${
+        flagged ? "border-amber-500/40 bg-amber-500/10" : "bg-muted/30"
+      }`}
+    >
+      <ChampionAvatar
+        name={diag.champion}
+        label={champion}
+        className="size-7 shrink-0"
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium">
+          {champion}
+          <span className="ml-1 text-[11px] font-normal text-muted-foreground tabular-nums">
+            Lv {diag.level} · {diag.items.length} items
+          </span>
+        </span>
+        <span className="text-[11px] text-muted-foreground tabular-nums">
+          {diag.defensesResolved ? (
+            <>
+              resolved: MR {diag.mr ?? 0} · armor {diag.armor ?? 0} ·{" "}
+              {diag.hp ?? 0} HP
+            </>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-400">
+              <AlertTriangle className="size-3" aria-hidden="true" />
+              defenses unresolved — no gauge shown
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <span className="text-[11px] text-muted-foreground">
+          gauge {hasResist ? resistWord : "resist"}
+        </span>
+        <span
+          className={`font-semibold tabular-nums ${penCollapsed ? "text-amber-400" : ""}`}
+        >
+          {diag.resistKind == null
+            ? "—"
+            : diag.resistKind === "none"
+              ? "no resist"
+              : `${diag.resist ?? 0} → ${diag.resistAfterPen ?? 0}`}
+        </span>
+        {hasResist && (
+          <span className="text-[10px] text-muted-foreground">after pen</span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * Durability/MR debug panel: shows what the engine actually resolved for each enemy at the scrubbed
+ * moment — resolved MR/armor/HP vs the resist the gauge displayed — so a recorded game reveals
+ * whether (and where) enemy MR calculation drops. Time-aware: reflects the latest recompute ≤ the
+ * scrubber position.
+ */
+function DurabilityDiagnostics({
+  diagnostics,
+  scrubTime,
+}: {
+  diagnostics: DiagnosticSnapshot[];
+  scrubTime: number;
+}) {
+  const snap = useMemo(
+    () => diagnosticAt(diagnostics, scrubTime),
+    [diagnostics, scrubTime],
+  );
+  if (diagnostics.length === 0) return null;
+
+  return (
+    <Section
+      title="Durability diagnostics (MR)"
+      Icon={ShieldQuestion}
+      aside={
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground normal-case tabular-nums">
+          @ {formatDuration(scrubTime)}
+        </span>
+      }
+    >
+      {snap == null ? (
+        <p className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+          No recompute recorded yet at this point.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-1 text-[11px] text-muted-foreground">
+            <span
+              className={`inline-flex items-center gap-1 ${snap.ddragonReady ? "" : "text-amber-400"}`}
+            >
+              {!snap.ddragonReady && (
+                <AlertTriangle className="size-3" aria-hidden="true" />
+              )}
+              DDragon {snap.ddragonReady ? "ready" : "NOT ready"}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 ${snap.selfNuke ? "" : "text-amber-400"}`}
+            >
+              {!snap.selfNuke && (
+                <AlertTriangle className="size-3" aria-hidden="true" />
+              )}
+              your nuke: {snap.selfNuke ?? "unauthored (no resist applied)"}
+            </span>
+            {/* Raw Live Client pen multipliers (1.0 = no penetration; lower = more). Shown so the
+                engine's inversion can be sanity-checked against the enemy after-pen values below. */}
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              pen: magic {snap.selfMagicPenPercent}× / {snap.selfMagicPenFlat}{" "}
+              flat · armor {snap.selfArmorPenPercent}× / {snap.selfArmorPenFlat}{" "}
+              flat
+            </span>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {snap.enemies.map((d, i) => (
+              <EnemyDiagRow key={`${d.champion}-${i}`} diag={d} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="flex flex-col gap-4 p-3" aria-hidden="true">
@@ -447,6 +592,10 @@ function MatchBody({ match }: { match: MatchRecord }) {
       <EventLog
         events={match.events}
         championOf={championOf}
+        scrubTime={scrubTime}
+      />
+      <DurabilityDiagnostics
+        diagnostics={match.diagnostics}
         scrubTime={scrubTime}
       />
     </div>

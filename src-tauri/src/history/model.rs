@@ -135,6 +135,78 @@ pub struct MatchPlayer {
     pub final_items: Vec<ItemRef>,
 }
 
+/// One enemy's durability/MR resolution at a single recompute — the heart of the durability
+/// diagnostics. Records *what the engine actually produced* (resolved defenses + the resist the
+/// gauge would display), so a recorded game reveals exactly where enemy MR resolution drops. Abstract
+/// facts only — no champion/item branching — so the data-driven invariant is untouched.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnemyDiagnostic {
+    /// Live Client `championName` (the DDragon id) the resolution was keyed on.
+    pub champion: String,
+    pub level: u32,
+    /// Owned item ids at this recompute (the input to MR/armor resolution).
+    pub items: Vec<u32>,
+    /// True when DDragon resolved this enemy's base stats + item bonuses into defenses. When false,
+    /// the durability gauge shows nothing — the prime suspect for "no MR".
+    pub defenses_resolved: bool,
+    /// Resolved total HP at this level + items (`None` if defenses didn't resolve).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hp: Option<u32>,
+    /// Resolved total armor (`None` if defenses didn't resolve).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub armor: Option<u32>,
+    /// Resolved total magic resist — base + item MR (`None` if defenses didn't resolve). The number
+    /// this whole diagnostic exists to verify.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mr: Option<u32>,
+    /// Which resist the durability gauge applies vs the player's damage type
+    /// (`"magic"`/`"armor"`/`"none"`), or `None` when no durability was produced.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resist_kind: Option<String>,
+    /// The resist value the gauge displays before the player's penetration (`None` when no
+    /// durability). For a magic-damage player this should equal `mr`; a mismatch is the bug.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resist: Option<u32>,
+    /// The resist *after* the player's penetration — the number the in-game damage badge shows most
+    /// prominently. If this is 0 while `resist` is large, the player's penetration was mis-applied
+    /// (the prime suspect for "MR shows 0"). `None` when no durability was produced.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resist_after_pen: Option<u32>,
+}
+
+/// A point-in-time capture of the engine's enemy-durability resolution, recorded on each recompute.
+/// Purely a debugging aid (PROJECT_SPEC advisory): lets a recorded game show whether enemy MR is
+/// being calculated and, if not, where it drops (DDragon not ready, defenses unresolved, no authored
+/// nuke, etc.).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticSnapshot {
+    /// Seconds since game start at this recompute.
+    pub game_time: f64,
+    /// Whether resolved DDragon data was available — defenses cannot resolve without it.
+    pub ddragon_ready: bool,
+    /// The local player's authored primary nuke as `"<slot> · <damageType>"` (e.g. `"Q · magic"`),
+    /// or `None` when unauthored — when `None` the gauge applies no resist (raw HP only), which
+    /// itself explains a missing MR.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub self_nuke: Option<String>,
+    /// The player's magic penetration as read **raw** from the Live Client `championStats`
+    /// (`magicPenetrationPercent`) — the fraction of the enemy's resist that still applies, so
+    /// `1.0` = no penetration and lower = more. Recorded verbatim so the engine's inversion of it
+    /// can be audited (a stale build that forgot to invert would zero every enemy's resist).
+    pub self_magic_pen_percent: f32,
+    /// The player's flat magic penetration, raw from `championStats.magicPenetrationFlat`.
+    pub self_magic_pen_flat: f32,
+    /// The player's armor penetration percent, raw from `championStats.armorPenetrationPercent`
+    /// (same unit question as magic, for an AD player).
+    pub self_armor_pen_percent: f32,
+    /// The player's flat armor penetration, raw from `championStats.armorPenetrationFlat`.
+    pub self_armor_pen_flat: f32,
+    /// One entry per enemy, in roster order.
+    pub enemies: Vec<EnemyDiagnostic>,
+}
+
 /// A fully recorded match — the body of the `get_match` command and the on-disk file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,6 +242,10 @@ pub struct MatchRecord {
     pub skill_timeline: Vec<SkillEvent>,
     /// Kill / objective / game events, de-duplicated and in feed order.
     pub events: Vec<MatchEvent>,
+    /// Per-recompute enemy-durability resolution diagnostics (the MR debug log). `#[serde(default)]`
+    /// so records written before this field existed still load (as an empty list).
+    #[serde(default)]
+    pub diagnostics: Vec<DiagnosticSnapshot>,
 }
 
 /// A compact projection of a [`MatchRecord`] for the history list — body of `get_match_history`.
