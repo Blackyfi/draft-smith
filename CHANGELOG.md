@@ -2,6 +2,21 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.16
+
+### New features
+- **Match replay scrubber** — open any saved match and drag the timeline bar (pinned to the top of
+  the page) to rewind the whole game to any moment. As you scrub, each player's items rebuild to
+  what they owned then, levels and kills/deaths/assists update, and the event log reveals only what
+  had happened so far. Kill and objective markers sit on the bar so you can jump straight to the
+  action.
+
+### Improvements
+- **Kills show who was on which champion** — in a match's event log, each player's name now carries
+  their champion in parentheses, e.g. "You (Ahri) killed Rival (Zed)".
+- **Numbered build order** — in a match's "Your build", every item now shows a #1, #2, … badge for
+  the order you bought it in.
+
 ## 0.1.15
 
 ### New features
