@@ -77,6 +77,11 @@ state.allPlayers.forEach((p) => {
   p.level = 1;
 });
 state.gameData.gameTime = FRESH_START_GAMETIME;
+// Mark this as the DraftSmith dev mock so the match recorder never writes it to the user's real
+// match history. The mock replays a real CLASSIC payload over the actual Live Client origin, so a
+// sentinel gameMode is the only thing that distinguishes it (mirrors MOCK_GAME_MODE in Rust).
+// Coaching is mode-agnostic, so this doesn't affect the demo; the mode isn't shown in-game.
+state.gameData.gameMode = "DRAFTSMITHMOCK";
 
 const baseGameTime = state.gameData.gameTime;
 const startedAt = Date.now();

@@ -26,7 +26,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const RECORD: MatchRecord = {
   id: "200_Ahri",
-  recordedAt: 200,
+  startedAt: 100,
+  endedAt: 200,
   appVersion: "0.1.13",
   patch: "16.11.1",
   gameMode: "CLASSIC",

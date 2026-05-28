@@ -270,8 +270,9 @@ async fn poll_once(
             // and never held across an `.await`.
             {
                 let mut guard = state.recorder.lock().expect("recorder mutex poisoned");
+                // Stamp the start wall-clock once, when the recorder is first created for this game.
                 guard
-                    .get_or_insert_with(MatchRecorder::default)
+                    .get_or_insert_with(|| MatchRecorder::starting_at(now_unix_ms()))
                     .observe(&data);
             }
             // Gank detection runs EVERY poll (not just on the diff branch): a pure time threshold
@@ -336,6 +337,15 @@ async fn poll_once(
     }
 }
 
+/// Current wall-clock time as Unix epoch milliseconds (0 if the clock is before the epoch). Used to
+/// stamp a recorded match's start/end; the recorder itself never reads the clock.
+fn now_unix_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 /// Takes the in-flight match recorder and, if it holds a game worth keeping, flushes it to disk and
 /// emits `match-saved` (Part A). Always clears the recorder so the next game starts clean — even
 /// when there's nothing to save, no history state (tests), or the write fails.
@@ -374,12 +384,8 @@ async fn flush_recorder(
             .unwrap_or_else(|| "unknown".to_string()),
         None => "unknown".to_string(),
     };
-    let recorded_at = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0);
-
-    let record = recorder.into_record(recorded_at, app_version.to_string(), patch);
+    let ended_at = now_unix_ms();
+    let record = recorder.into_record(ended_at, app_version.to_string(), patch);
     let summary = record.summary();
     let store = history.store();
     // Persist off the async runtime (disk write), then surface the new entry to the FE.

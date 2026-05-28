@@ -70,7 +70,7 @@ function MatchRow({ match }: { match: MatchSummary }) {
               {formatDuration(match.durationSeconds)}
             </span>
             <span>{formatGameMode(match.gameMode)}</span>
-            <span>{formatRelativeDate(match.recordedAt)}</span>
+            <span>{formatRelativeDate(match.endedAt)}</span>
           </div>
         </div>
       </button>

@@ -261,7 +261,7 @@ function DetailHeader({ match }: { match: MatchRecord }) {
           </span>
           <span>{formatGameMode(match.gameMode)}</span>
           <span>Patch {match.patch}</span>
-          <span>{formatRelativeDate(match.recordedAt)}</span>
+          <span>{formatRelativeDate(match.endedAt)}</span>
         </div>
       </div>
     </div>
