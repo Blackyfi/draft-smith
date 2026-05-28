@@ -4,12 +4,13 @@
 use crate::ddragon::{
     self, cache::DdragonCache, fetch::DdragonFetcher, icons::IconKind, LoadOutcome, ResolvedData,
 };
+use crate::history::model::{MatchRecord, MatchSummary};
 use crate::meta::{self, cache::MetaCache, fetch::MetaFetcher};
 use crate::model::settings::DEFAULT_LOCALE;
 use crate::model::{
     ChampionMeta, ConnectionStatus, DdragonStatus, ItemMeta, MetaBuild, Recommendation, Settings,
 };
-use crate::state::{DdragonState, LiveState, MetaState, SettingsState};
+use crate::state::{DdragonState, HistoryState, LiveState, MetaState, SettingsState};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 /// Returns the current connection / coaching status, as maintained by the Live Client poller (M2).
@@ -26,6 +27,42 @@ pub async fn get_current_recommendation(
     state: State<'_, LiveState>,
 ) -> Result<Option<Recommendation>, String> {
     Ok(state.recommendation.read().await.clone())
+}
+
+/// Lists every recorded match as a compact summary, newest first (Part A). Body of the Match
+/// History list. Reads the on-disk store off the IPC thread; corrupt files are skipped, not fatal.
+#[tauri::command]
+pub async fn get_match_history(
+    state: State<'_, HistoryState>,
+) -> Result<Vec<MatchSummary>, String> {
+    let store = state.store();
+    tokio::task::spawn_blocking(move || store.list())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Loads one recorded match in full by id, or `Ok(None)` if it no longer exists (Part A). Body of
+/// the Match Detail view.
+#[tauri::command]
+pub async fn get_match(
+    id: String,
+    state: State<'_, HistoryState>,
+) -> Result<Option<MatchRecord>, String> {
+    let store = state.store();
+    tokio::task::spawn_blocking(move || store.get(&id))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+/// Deletes a recorded match by id (idempotent — deleting a missing match succeeds).
+#[tauri::command]
+pub async fn delete_match(id: String, state: State<'_, HistoryState>) -> Result<(), String> {
+    let store = state.store();
+    tokio::task::spawn_blocking(move || store.delete(&id))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 /// The app changelog, embedded at compile time (Markdown). Surfaced in-app via Settings → What's

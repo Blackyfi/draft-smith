@@ -1,6 +1,7 @@
 //! Tauri-managed application state.
 
 use crate::ddragon::ResolvedData;
+use crate::history::{MatchRecorder, MatchStore};
 use crate::live_client::AllGameData;
 use crate::model::{ConnectionStatus, Recommendation, Settings};
 use std::path::PathBuf;
@@ -53,6 +54,11 @@ pub struct LiveState {
     pub status: Mutex<ConnectionStatus>,
     pub snapshot: RwLock<Option<AllGameData>>,
     pub recommendation: RwLock<Option<Recommendation>>,
+    /// The in-flight match recorder for the current game (Part A). `None` between games; the poller
+    /// initializes it on the first in-game poll, feeds it each poll, and takes + flushes it when the
+    /// game ends. A plain `Mutex` guards it: the poller's lock is brief and never held across
+    /// `.await`, and the recorder itself is clockless/IO-free.
+    pub recorder: Mutex<Option<MatchRecorder>>,
 }
 
 impl Default for LiveState {
@@ -61,7 +67,27 @@ impl Default for LiveState {
             status: Mutex::new(ConnectionStatus::NoGame),
             snapshot: RwLock::new(None),
             recommendation: RwLock::new(None),
+            recorder: Mutex::new(None),
         }
+    }
+}
+
+/// Match-history layer state: the on-disk store root for recorded matches.
+///
+/// Mirrors [`DdragonState`]/[`MetaState`] — the cache root lives in the app-data dir alongside them.
+/// The [`MatchStore`] is cheap to construct on demand from this root, so it isn't held here.
+pub struct HistoryState {
+    pub matches_root: PathBuf,
+}
+
+impl HistoryState {
+    pub fn new(matches_root: PathBuf) -> Self {
+        Self { matches_root }
+    }
+
+    /// A [`MatchStore`] handle over this state's root.
+    pub fn store(&self) -> MatchStore {
+        MatchStore::new(self.matches_root.clone())
     }
 }
 

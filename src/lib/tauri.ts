@@ -5,6 +5,8 @@ import type {
   ConnectionStatus,
   DdragonStatus,
   ItemMeta,
+  MatchRecord,
+  MatchSummary,
   MetaBuild,
   Recommendation,
   Settings,
@@ -100,6 +102,15 @@ export const api = {
    * stripped description. Returns `null` when DDragon data hasn't loaded or the item is unknown.
    */
   getItemMeta: (id: number) => invoke<ItemMeta | null>("get_item_meta", { id }),
+
+  /** Every recorded match as a compact summary, newest first (Part A — Match History list). */
+  getMatchHistory: () => invoke<MatchSummary[]>("get_match_history"),
+
+  /** One recorded match in full by id, or `null` if it no longer exists (Match Detail view). */
+  getMatch: (id: string) => invoke<MatchRecord | null>("get_match", { id }),
+
+  /** Deletes a recorded match by id (idempotent). */
+  deleteMatch: (id: string) => invoke<void>("delete_match", { id }),
 };
 
 /**

@@ -3,9 +3,12 @@ import { GankAlertOverlay } from "@/components/gank/GankAlertOverlay";
 import { Dashboard } from "@/components/Dashboard";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { IdleHome } from "@/components/history/IdleHome";
+import { MatchDetail } from "@/components/history/MatchDetail";
+import { MatchHistory } from "@/components/history/MatchHistory";
 import { Connecting } from "@/components/states/Connecting";
 import { ErrorState } from "@/components/states/ErrorState";
-import { NoGame } from "@/components/states/NoGame";
+import { Stats } from "@/components/states/Stats";
 import { useBuildShiftToasts } from "@/hooks/useBuildShiftToasts";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useGankAlert } from "@/hooks/useGankAlert";
@@ -71,8 +74,24 @@ function renderMain(
     case "error":
       return <ErrorState />;
     case "no-game":
-      return <NoGame />;
+      return <IdleScreen />;
   }
+}
+
+/**
+ * The idle (no-game) screen: a small launcher (home) that drills into Match History / Match Detail
+ * or the Stats placeholder (PROJECT_SPEC §6.4). Routed by the UI store; an in-game state takes over
+ * automatically via the connection status above, so this is only shown between games.
+ */
+function IdleScreen() {
+  const idleView = useUiStore((s) => s.idleView);
+  const selectedMatchId = useUiStore((s) => s.selectedMatchId);
+
+  if (idleView === "history") {
+    return selectedMatchId ? <MatchDetail /> : <MatchHistory />;
+  }
+  if (idleView === "stats") return <Stats />;
+  return <IdleHome />;
 }
 
 export default App;

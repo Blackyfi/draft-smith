@@ -199,6 +199,27 @@ function score(championName, { kills = 0, deaths = 0, assists = 0 } = {}) {
   console.log(`  ${championName} scoreline → ${s.kills}/${s.deaths}/${s.assists}`);
 }
 
+// ---------- Game-event feed (Part A: match recording) --------------------------------
+// `/allgamedata` carries an `events.Events[]` feed (kills, objectives, GameEnd). The recorder reads
+// it to build the match's event timeline and final result. The fixture seeds a couple of early
+// events; we append more as the demo escalates, then a terminal GameEnd when the timeline completes.
+state.events ??= { Events: [] };
+state.events.Events ??= [];
+let nextEventId =
+  Math.max(0, ...state.events.Events.map((e) => e.EventID ?? 0)) + 1;
+let gameEnded = false;
+
+function addEvent(name, extra = {}) {
+  const ev = {
+    EventID: nextEventId++,
+    EventName: name,
+    EventTime: Math.round(state.gameData.gameTime),
+    ...extra,
+  };
+  state.events.Events.push(ev);
+  console.log(`  event: ${name}${extra.KillerName ? ` (${extra.KillerName})` : ""}`);
+}
+
 // The demo runs in two acts. Act 1 ("lane → mid game") feeds each player's captured fixture loadout
 // back in, one item-slot at a time across the whole lobby, so first items land before second items —
 // roughly how a real game paces out. Act 2 ("escalation") then layers on extra purchases, each adding
@@ -225,23 +246,31 @@ const escalationSteps = [
   () => {
     buy("Zed", 3814, "Edge of Night"); //            → reinforces lethality (and a spellshield)
     score("Zed", { kills: 2, assists: 1 });
+    addEvent("FirstBlood", { Recipient: "Zed" });
+    addEvent("ChampionKill", { KillerName: "Zed", VictimName: "Ahri", Assisters: [] });
   },
   // Darius wins a lane trade (1/0) and starts stacking bulk.
   () => {
     buy("Darius", 3053, "Sterak's Gage"); //          → health-stacking (frontline bulk)
     score("Darius", { kills: 1 });
+    addEvent("ChampionKill", { KillerName: "Darius", VictimName: "Leona", Assisters: [] });
   },
   // Zed snowballs to 3/0 → crosses the fed threshold (Fed pill + focus shift + toast).
   () => {
     buy("Vi", 3065, "Spirit Visage"); //              → mr-stacking + has-sustain
     score("Zed", { kills: 1 });
+    addEvent("DragonKill", { KillerName: "Vi", DragonType: "Fire", Stolen: "False", Assisters: [] });
   },
   // Darius reaches 3/1 → also fed; team healing grows.
   () => {
     buy("Kaisa", 3072, "Bloodthirster"); //           → has-sustain (healing across the team)
     score("Darius", { kills: 2, deaths: 1 });
+    addEvent("ChampionKill", { KillerName: "Ahri", VictimName: "Zed", Assisters: ["Kaisa"] });
   },
-  () => buy("Leona", 3068, "Sunfire Aegis"), //       → health + armor stacking
+  () => {
+    buy("Leona", 3068, "Sunfire Aegis"); //           → health + armor stacking
+    addEvent("BaronKill", { KillerName: "Vi", Stolen: "False", Assisters: [] });
+  },
 ];
 
 const TIMELINE = [...baseBuildSteps, ...escalationSteps];
@@ -254,10 +283,23 @@ const timer = setInterval(() => {
   rampLevels();
 
   if (step >= TIMELINE.length) {
-    // No more purchases; keep the timer alive so levels continue ticking.
-    if (state.activePlayer.level >= 18) {
-      clearInterval(timer);
-      console.log("Timeline complete — holding final state (clock still ticking).");
+    // Purchases done and the player has hit 18: end the game. Emit GameEnd, hold briefly so the
+    // poller captures it, then close the server so the next poll gets connection-refused — the real
+    // "game over" signal League sends. The poller's no-game branch then flushes the recorded match
+    // to disk (Part A), which should appear in Match History.
+    if (state.activePlayer.level >= 18 && !gameEnded) {
+      gameEnded = true;
+      addEvent("GameEnd", { Result: "Win" });
+      console.log(
+        "\nTimeline complete — GameEnd emitted. Closing the server in 6s to end the game so the " +
+          "match record flushes; it should then show up in Match History.",
+      );
+      setTimeout(() => {
+        clearInterval(timer);
+        server.close(() =>
+          console.log("Server closed — the app should now see no-game and save the match."),
+        );
+      }, 6000);
     }
     return;
   }
