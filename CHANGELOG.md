@@ -2,6 +2,22 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.15
+
+### New features
+- **Saved-match count at a glance** — the Match History card on the home screen now shows how many
+  matches you have saved.
+
+### Improvements
+- **Clearer patch-data controls** — in Settings, hovering "Refresh patch data" or "Reset cache" now
+  explains when to use each, and the Reset button shows how much disk space the cache is using.
+- **Richer match records** — each saved match now stores its start and end time, groundwork for the
+  upcoming Stats & KPIs view.
+
+### Fixes
+- **Only real matches are saved** — Practice Tool and Tutorial games are no longer added to your
+  Match History.
+
 ## 0.1.14
 
 ### New features
