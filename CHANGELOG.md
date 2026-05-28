@@ -2,6 +2,19 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.14
+
+### New features
+- **Match history** — DraftSmith now records every game it watches and saves it locally when the
+  game ends. When no game is running, the app opens a small home screen with a **Match History**
+  button: browse your past games and open any one to see the final scoreboard, your full build
+  order with timings, your skill order, and a timeline of kills and objectives. A **Stats & KPIs**
+  view is coming next — every game you play now is already being saved for it.
+
+### Fixes
+- **No more false "error" between games** — while you're in champ select or the loading screen, the
+  app now shows the calm "no game" state instead of briefly flashing an error.
+
 ## 0.1.13
 
 ### Fixes

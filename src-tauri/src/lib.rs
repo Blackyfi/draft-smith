@@ -1,6 +1,7 @@
 mod commands;
 mod ddragon;
 mod engine;
+mod history;
 mod live_client;
 mod meta;
 mod model;
@@ -64,6 +65,8 @@ pub fn run() {
             app.manage(state::DdragonState::new(cache_root));
             // The "Tier B" meta-build cache (u.gg overview JSON) lives alongside the DDragon cache.
             app.manage(state::MetaState::new(app_data_dir.join("meta")));
+            // Recorded matches (Part A) persist alongside the caches, under `matches/`.
+            app.manage(state::HistoryState::new(app_data_dir.join("matches")));
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 commands::refresh_ddragon(&handle, false).await;
@@ -88,6 +91,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_status,
             commands::get_current_recommendation,
+            commands::get_match_history,
+            commands::get_match,
+            commands::delete_match,
             commands::force_refresh_ddragon,
             commands::get_champion_meta,
             commands::get_meta_build,

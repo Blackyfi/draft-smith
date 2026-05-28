@@ -5,6 +5,7 @@ import type {
   DdragonStatus,
   GankAlert,
   GameStateSummary,
+  MatchSummary,
   Recommendation,
 } from "@/types";
 
@@ -22,6 +23,8 @@ export interface TauriEvents {
   "open-settings": null;
   /** Transient alert emitted when the enemy jungler hits a gank-relevant moment. */
   "gank-alert": GankAlert;
+  /** Emitted once when a finished game is recorded to disk; the history list refreshes off this. */
+  "match-saved": MatchSummary;
 }
 
 /**

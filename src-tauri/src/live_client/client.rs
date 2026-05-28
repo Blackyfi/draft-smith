@@ -76,7 +76,8 @@ impl LiveClient {
     /// Fetches and parses `/allgamedata`.
     ///
     /// A refused connection or timeout — the ordinary state outside a game — maps to
-    /// [`LiveClientError::NotInGame`], not a hard error (PROJECT_SPEC §3.1).
+    /// [`LiveClientError::NotInGame`], not a hard error (PROJECT_SPEC §3.1). A `404` is treated the
+    /// same way: the endpoint is up but has no game yet (champ select / loading / spectator).
     pub async fn all_game_data(&self) -> Result<AllGameData> {
         let url = format!("{}{}", self.base, ALL_GAME_DATA_PATH);
         let response = self
@@ -84,7 +85,14 @@ impl LiveClient {
             .get(url)
             .send()
             .await
-            .map_err(classify_send_error)?
+            .map_err(classify_send_error)?;
+        // The Live Client answers `/allgamedata` with 404 while it's up but has no playable game yet
+        // — champ select, the loading screen, or a spectator transition. That's the benign "no game"
+        // state, not a fault to surface (it was previously logged as a hard error every poll there).
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(LiveClientError::NotInGame);
+        }
+        let response = response
             .error_for_status()
             .map_err(LiveClientError::Request)?;
         response.json::<AllGameData>().await.map_err(|err| {
@@ -158,6 +166,22 @@ mod tests {
         let err = client.all_game_data().await.unwrap_err();
         assert!(matches!(err, LiveClientError::Parse(_)));
         assert!(!err.is_no_game());
+    }
+
+    #[tokio::test]
+    async fn not_found_is_no_game_not_an_error() {
+        // The Live Client returns 404 for /allgamedata during champ select / loading / spectator —
+        // the endpoint is up but no game data yet. That must read as the benign no-game state.
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(ALL_GAME_DATA_PATH))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let client = LiveClient::with_base(server.uri()).unwrap();
+        let err = client.all_game_data().await.unwrap_err();
+        assert!(err.is_no_game(), "404 should map to NotInGame, got {err:?}");
     }
 
     #[tokio::test]

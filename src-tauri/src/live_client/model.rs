@@ -17,8 +17,68 @@ pub struct AllGameData {
     pub active_player: Option<ActivePlayer>,
     /// Every player in the game (both teams), in the API's order.
     pub all_players: Vec<Player>,
+    /// The running game-event feed (kills, objectives, game start/end). Cumulative: each poll
+    /// resends the whole list, so the last successful poll holds the full timeline.
+    pub events: Events,
     /// Map / mode / clock.
     pub game_data: GameData,
+}
+
+/// The `events` container: `{ "Events": [ ... ] }`. The outer key is `events` (camelCase, mapped by
+/// the [`AllGameData`] container), the inner array key is `Events` (PascalCase) — hence the rename.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct Events {
+    #[serde(rename = "Events")]
+    pub events: Vec<GameEvent>,
+}
+
+/// One entry from the Live Client event feed. Only `EventID`/`EventName`/`EventTime` are common to
+/// every event; the rest are event-specific and optional, so all fields are `#[serde(default)]` —
+/// an event whose shape we don't fully model still parses (CLAUDE.md "tolerate malformed/missing").
+///
+/// Captured names seen in the wild: `GameStart`, `MinionsSpawning`, `FirstBrick`, `ChampionKill`,
+/// `FirstBlood`, `Multikill`, `Ace`, `TurretKilled`, `InhibKilled`, `DragonKill` (+`DragonType`,
+/// `Stolen`), `HeraldKill`, `BaronKill`, `GameEnd` (+`Result` = `"Win"`/`"Lose"`).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct GameEvent {
+    #[serde(rename = "EventID")]
+    pub event_id: u32,
+    #[serde(rename = "EventName")]
+    pub event_name: String,
+    #[serde(rename = "EventTime")]
+    pub event_time: f64,
+    /// `ChampionKill`/`DragonKill`/`TurretKilled`/etc.: the killer's Riot ID or summoner name.
+    #[serde(rename = "KillerName")]
+    pub killer_name: String,
+    /// `ChampionKill`: the victim's Riot ID or summoner name.
+    #[serde(rename = "VictimName")]
+    pub victim_name: String,
+    /// `ChampionKill`/objective kills: assisting players' names.
+    #[serde(rename = "Assisters")]
+    pub assisters: Vec<String>,
+    /// `FirstBlood`/`Multikill`/`Ace`: the player who earned it.
+    #[serde(rename = "Recipient")]
+    pub recipient: String,
+    /// `DragonKill`: the dragon's element (`"Fire"`, `"Earth"`, `"Elder"`, …).
+    #[serde(rename = "DragonType")]
+    pub dragon_type: String,
+    /// `DragonKill`/`BaronKill`: `"True"`/`"False"` (string) — whether it was stolen.
+    #[serde(rename = "Stolen")]
+    pub stolen: String,
+    /// `TurretKilled`: the structure id (e.g. `"Turret_T1_C_07_A"`).
+    #[serde(rename = "TurretKilled")]
+    pub turret_killed: String,
+    /// `InhibKilled`: the inhibitor id.
+    #[serde(rename = "InhibKilled")]
+    pub inhib_killed: String,
+    /// `GameEnd`: `"Win"` / `"Lose"` (relative to the active player's team).
+    #[serde(rename = "Result")]
+    pub result: String,
+    /// `Multikill`: the kill streak size (2 = double, 3 = triple, …).
+    #[serde(rename = "KillStreak")]
+    pub kill_streak: u32,
 }
 
 /// The local ("active") player. Carries the gold and identity used to find "us" in `all_players`.
@@ -308,6 +368,52 @@ mod tests {
         let bare: AllGameData =
             serde_json::from_str(r#"{ "allPlayers": [ { "championName": "Teemo" } ] }"#).unwrap();
         assert!(!bare.all_players[0].has_smite());
+    }
+
+    #[test]
+    fn parses_event_feed_with_objectives_and_game_end() {
+        // A representative `events` block: kill (with assisters), an elemental dragon, a turret, and
+        // the terminal GameEnd. Each carries a different subset of fields — all must parse.
+        let json = r#"{
+            "events": { "Events": [
+                { "EventID": 0, "EventName": "GameStart", "EventTime": 0.04 },
+                { "EventID": 5, "EventName": "ChampionKill", "EventTime": 121.3,
+                  "KillerName": "Zed#EUW", "VictimName": "Ahri#EUW", "Assisters": ["LeeSin#EUW"] },
+                { "EventID": 6, "EventName": "DragonKill", "EventTime": 305.0,
+                  "KillerName": "LeeSin#EUW", "DragonType": "Fire", "Stolen": "False", "Assisters": [] },
+                { "EventID": 7, "EventName": "TurretKilled", "EventTime": 420.0,
+                  "TurretKilled": "Turret_T1_C_07_A", "KillerName": "Zed#EUW" },
+                { "EventID": 9, "EventName": "GameEnd", "EventTime": 1800.0, "Result": "Win" }
+            ] },
+            "gameData": { "gameMode": "CLASSIC", "gameTime": 1800.0 }
+        }"#;
+        let data: AllGameData = serde_json::from_str(json).unwrap();
+        let events = &data.events.events;
+        assert_eq!(events.len(), 5);
+
+        let kill = &events[1];
+        assert_eq!(kill.event_name, "ChampionKill");
+        assert_eq!(kill.killer_name, "Zed#EUW");
+        assert_eq!(kill.victim_name, "Ahri#EUW");
+        assert_eq!(kill.assisters, vec!["LeeSin#EUW".to_string()]);
+
+        let dragon = &events[2];
+        assert_eq!(dragon.dragon_type, "Fire");
+        assert_eq!(dragon.stolen, "False");
+
+        let end = events.last().unwrap();
+        assert_eq!(end.event_name, "GameEnd");
+        assert_eq!(end.result, "Win");
+    }
+
+    #[test]
+    fn tolerates_absent_event_feed() {
+        // The captured fixture (and any partial payload) may omit `events`; it must default to empty.
+        let data: AllGameData = serde_json::from_str(SAMPLE).unwrap();
+        // Fixture has two early events (GameStart, MinionsSpawning); a `{}` payload has none.
+        assert!(data.events.events.iter().all(|e| !e.event_name.is_empty()));
+        let bare: AllGameData = serde_json::from_str("{}").unwrap();
+        assert!(bare.events.events.is_empty());
     }
 
     #[test]

@@ -467,6 +467,138 @@ export interface UpdateInfo {
   currentVersion: string;
 }
 
+// ---------------------------------------------------------------------------
+// Match history (Part A) — mirrors `src-tauri/src/history/model.rs` (serde `camelCase`).
+// Objective Live-Client facts recorded per game; bodies of get_match_history / get_match and the
+// `match-saved` event.
+// ---------------------------------------------------------------------------
+
+/** Mirrors `MatchResult` (serde `kebab-case`). Outcome relative to the local player's team. */
+export type MatchResult = "win" | "loss" | "unknown";
+
+/** Mirrors `ItemEventKind` (serde `kebab-case`). Whether an item entered or left the inventory. */
+export type ItemEventKind = "acquired" | "removed";
+
+/** Mirrors `ItemRef` — one owned item as id + resolved name + inventory slot. */
+export interface ItemRef {
+  id: number;
+  name: string;
+  slot: number;
+}
+
+/** Mirrors `ItemEvent` — one item-inventory transition for one player at one game time. */
+export interface ItemEvent {
+  /** Seconds since game start when first observed. */
+  gameTime: number;
+  /** Correlates to `MatchPlayer.key`. */
+  playerKey: string;
+  itemId: number;
+  name: string;
+  kind: ItemEventKind;
+}
+
+/** Mirrors `LevelEvent` — a champion-level change for one player. */
+export interface LevelEvent {
+  gameTime: number;
+  playerKey: string;
+  level: number;
+}
+
+/** Mirrors `SkillEvent` — a skill-point spend by the local player (only our abilities are exposed). */
+export interface SkillEvent {
+  gameTime: number;
+  slot: AbilitySlot;
+  /** The ability's new rank after this point. */
+  abilityRank: number;
+  /** The player's champion level when the point was spent. */
+  championLevel: number;
+  abilityName: string;
+}
+
+/** Mirrors `MatchEvent` — a normalized kill / objective / game event. Optional fields omitted when absent. */
+export interface MatchEvent {
+  gameTime: number;
+  /** Raw `EventName` (e.g. "ChampionKill", "DragonKill", "GameEnd"). */
+  kind: string;
+  killer?: string;
+  victim?: string;
+  assisters?: string[];
+  recipient?: string;
+  dragonType?: string;
+  stolen?: boolean;
+  turret?: string;
+  inhib?: string;
+}
+
+/** Mirrors `MatchPlayer` — one player's identity + final scoreline in a recorded match. */
+export interface MatchPlayer {
+  /** Stable per-game id (join key for the timelines). */
+  key: string;
+  /** Live Client `championName` (DDragon id). */
+  champion: string;
+  riotId: string;
+  summonerName: string;
+  /** "ORDER" (blue) or "CHAOS" (red). */
+  team: string;
+  position: string;
+  isBot: boolean;
+  /** True for the local player whose game this record belongs to. */
+  isSelf: boolean;
+  /** The two summoner-spell display names. */
+  summonerSpells: [string, string];
+  finalLevel: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  creepScore: number;
+  wardScore: number;
+  /** Final owned items, in inventory-slot order. */
+  finalItems: ItemRef[];
+}
+
+/** Mirrors `MatchRecord` — a fully recorded match; body of `get_match`. */
+export interface MatchRecord {
+  /** Unique id (`<recordedAtMs>_<selfChampion>`), also the file stem. */
+  id: string;
+  /** Wall-clock flush time, Unix epoch milliseconds. */
+  recordedAt: number;
+  /** DraftSmith version that produced the record. */
+  appVersion: string;
+  /** DDragon patch the game was played on. */
+  patch: string;
+  gameMode: string;
+  mapName: string;
+  mapNumber: number;
+  /** Last observed game time, seconds (≈ duration). */
+  durationSeconds: number;
+  result: MatchResult;
+  /** Live Client `championName` of the local player. */
+  selfChampion: string;
+  players: MatchPlayer[];
+  itemTimeline: ItemEvent[];
+  levelTimeline: LevelEvent[];
+  /** Skill-point spends by the local player, in order. */
+  skillTimeline: SkillEvent[];
+  events: MatchEvent[];
+}
+
+/**
+ * Mirrors `MatchSummary` — compact list-view projection; body of `get_match_history` and the
+ * `match-saved` event. Scoreline is the local player's.
+ */
+export interface MatchSummary {
+  id: string;
+  recordedAt: number;
+  selfChampion: string;
+  result: MatchResult;
+  durationSeconds: number;
+  gameMode: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  creepScore: number;
+}
+
 /**
  * Mirrors `ChampionMeta` in `src-tauri/src/model/champion.rs` (serde `camelCase`).
  * Returned by the `get_champion_meta` command.

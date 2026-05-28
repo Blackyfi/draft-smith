@@ -12,12 +12,14 @@ mod gank;
 
 use crate::engine::input::ResolvedDefenses;
 use crate::engine::{self, EngineInput};
+use crate::history::model::MatchSummary;
+use crate::history::MatchRecorder;
 use crate::live_client::model::AllGameData;
 use crate::live_client::LiveClient;
 use crate::model::settings::{MAX_POLL_INTERVAL_SECS, MIN_POLL_INTERVAL_SECS};
 use crate::model::{ConnectionStatus, GameStateSummary, GankAlert, Recommendation};
 use crate::rules::RuleSet;
-use crate::state::{DdragonState, LiveState, SettingsState};
+use crate::state::{DdragonState, HistoryState, LiveState, SettingsState};
 use crate::tray;
 use gank::GankAlertState;
 use std::time::Duration;
@@ -128,6 +130,9 @@ enum PollEvent {
     /// per-poll gank evaluator (not the diff branch), since a pure time threshold can be crossed
     /// with no roster/level change.
     GankAlert(GankAlert),
+    /// `match-saved` — fired once when a finished game's record is flushed to disk, so the history
+    /// list can refresh while the window is open. Carries the new match's summary.
+    MatchSaved(MatchSummary),
 }
 
 /// Spawns the poll loop on the async runtime. Returns immediately; the loop runs for the life of
@@ -183,6 +188,8 @@ fn load_rules() -> Option<RuleSet> {
 async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
     let state = app.state::<LiveState>();
     let rules = load_rules();
+    // The installed app version, stamped into every saved match record (read once; immutable).
+    let app_version = app.package_info().version.to_string();
     let mut emit = |event: PollEvent| match event {
         PollEvent::ConnectionStatus(status) => {
             // Reflect the status in the tray tooltip (PROJECT_SPEC §6.2), then notify the FE.
@@ -197,6 +204,9 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
         }
         PollEvent::GankAlert(alert) => {
             let _ = app.emit("gank-alert", &alert);
+        }
+        PollEvent::MatchSaved(summary) => {
+            let _ = app.emit("match-saved", &summary);
         }
     };
 
@@ -218,6 +228,8 @@ async fn run_loop<R: Runtime>(app: AppHandle<R>, client: LiveClient) {
             &state,
             rules.as_ref(),
             Some(&*app.state::<DdragonState>()),
+            Some(&*app.state::<HistoryState>()),
+            &app_version,
             &mut last_signature,
             gank_enabled,
             &mut gank_state,
@@ -240,6 +252,8 @@ async fn poll_once(
     state: &LiveState,
     rules: Option<&RuleSet>,
     ddragon: Option<&DdragonState>,
+    history: Option<&HistoryState>,
+    app_version: &str,
     last_signature: &mut Option<StateSignature>,
     gank_enabled: bool,
     gank_state: &mut GankAlertState,
@@ -250,6 +264,16 @@ async fn poll_once(
     match client.all_game_data().await {
         Ok(data) => {
             transition(state, ConnectionStatus::InGame, emit);
+            // Record the match (Part A). Feed EVERY in-game poll — not just the diff branch — so the
+            // duration, event feed, and any between-diff item/level changes are all captured. The
+            // recorder is idempotent on unchanged input, clockless, and IO-free; the lock is brief
+            // and never held across an `.await`.
+            {
+                let mut guard = state.recorder.lock().expect("recorder mutex poisoned");
+                guard
+                    .get_or_insert_with(MatchRecorder::default)
+                    .observe(&data);
+            }
             // Gank detection runs EVERY poll (not just on the diff branch): a pure time threshold
             // can be crossed without any roster/level change. Skipped if disabled or rules are
             // unavailable (gank-style is data-driven).
@@ -296,6 +320,8 @@ async fn poll_once(
         }
         Err(err) if err.is_no_game() => {
             transition(state, ConnectionStatus::NoGame, emit);
+            // Leaving a game flushes the recorded match to disk (Part A) before clearing live state.
+            flush_recorder(state, history, ddragon, app_version, emit).await;
             // Leaving a game invalidates the last snapshot/signature/recommendation, and re-arms
             // the one-shot gank alerts for the next game.
             *last_signature = None;
@@ -307,6 +333,68 @@ async fn poll_once(
             log::warn!("Live Client poll failed: {err}");
             transition(state, ConnectionStatus::Error, emit);
         }
+    }
+}
+
+/// Takes the in-flight match recorder and, if it holds a game worth keeping, flushes it to disk and
+/// emits `match-saved` (Part A). Always clears the recorder so the next game starts clean — even
+/// when there's nothing to save, no history state (tests), or the write fails.
+///
+/// The wall-clock timestamp is read here (the poller, not the pure recorder); the patch comes from
+/// the loaded DDragon data, and the app version is passed in from the loop.
+async fn flush_recorder(
+    state: &LiveState,
+    history: Option<&HistoryState>,
+    ddragon: Option<&DdragonState>,
+    app_version: &str,
+    emit: &mut (dyn FnMut(PollEvent) + Send),
+) {
+    // Take the recorder out under a brief sync lock (never held across an `.await`).
+    let recorder = state
+        .recorder
+        .lock()
+        .expect("recorder mutex poisoned")
+        .take();
+
+    let (Some(recorder), Some(history)) = (recorder, history) else {
+        return;
+    };
+    if !recorder.is_worth_saving() {
+        return;
+    }
+
+    // Patch the game was played on, from the loaded DDragon data (best-effort).
+    let patch = match ddragon {
+        Some(d) => d
+            .data
+            .read()
+            .await
+            .as_ref()
+            .map(|data| data.version.clone())
+            .unwrap_or_else(|| "unknown".to_string()),
+        None => "unknown".to_string(),
+    };
+    let recorded_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    let record = recorder.into_record(recorded_at, app_version.to_string(), patch);
+    let summary = record.summary();
+    let store = history.store();
+    // Persist off the async runtime (disk write), then surface the new entry to the FE.
+    match tokio::task::spawn_blocking(move || store.save(&record)).await {
+        Ok(Ok(())) => {
+            log::info!(
+                "match recorded: {} ({}, {:.0}s)",
+                summary.id,
+                summary.self_champion,
+                summary.duration_seconds
+            );
+            emit(PollEvent::MatchSaved(summary));
+        }
+        Ok(Err(err)) => log::warn!("failed to save match {}: {err}", summary.id),
+        Err(err) => log::warn!("match-save task failed: {err}"),
     }
 }
 
@@ -442,6 +530,8 @@ mod tests {
             &state,
             Some(&rules),
             None,
+            None,
+            "test",
             &mut sig,
             false,
             &mut gank,
@@ -453,6 +543,10 @@ mod tests {
         assert!(
             state.snapshot.read().await.is_some(),
             "snapshot populated while in-game"
+        );
+        assert!(
+            state.recorder.lock().unwrap().is_some(),
+            "match recorder initialized + fed on the first in-game poll"
         );
         assert!(
             sig.is_some(),
@@ -503,6 +597,8 @@ mod tests {
             &state,
             None,
             None,
+            None,
+            "test",
             &mut sig,
             false,
             &mut gank,
@@ -523,6 +619,72 @@ mod tests {
         assert!(
             !gank.first_fired && !gank.six_fired,
             "gank alerts re-armed when the game ends"
+        );
+    }
+
+    #[tokio::test]
+    async fn poll_once_no_game_flushes_recorded_match() {
+        use crate::history::model::MatchResult;
+        use crate::state::HistoryState;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let history = HistoryState::new(dir.path().to_path_buf());
+        let state = LiveState::default();
+
+        // Seed the recorder as if a full game had been observed (past the 60s save floor).
+        let snapshot = parse(
+            r#"{
+                "activePlayer": { "riotIdGameName": "Me", "level": 11,
+                    "abilities": { "Q": { "abilityLevel": 5, "displayName": "Orb of Deception" } } },
+                "allPlayers": [
+                    { "championName": "Ahri", "riotId": "Me#EUW", "team": "ORDER", "level": 11,
+                      "items": [ { "itemID": 6655, "count": 1, "slot": 0, "displayName": "Luden's" } ],
+                      "scores": { "kills": 7, "deaths": 2, "assists": 9, "creepScore": 180 } },
+                    { "championName": "Zed", "riotId": "Foe#EUW", "team": "CHAOS", "level": 11 }
+                ],
+                "events": { "Events": [
+                    { "EventID": 1, "EventName": "GameEnd", "EventTime": 1500.0, "Result": "Win" } ] },
+                "gameData": { "gameMode": "CLASSIC", "gameTime": 1500.0, "mapName": "Map11", "mapNumber": 11 }
+            }"#,
+        );
+        {
+            let mut rec = MatchRecorder::default();
+            rec.observe(&snapshot);
+            *state.recorder.lock().unwrap() = Some(rec);
+        }
+
+        // Dead port → benign no-game branch → flush the recorded match.
+        let client = LiveClient::with_base("http://127.0.0.1:1").unwrap();
+        let mut sig = None;
+        let mut gank = GankAlertState::default();
+        let mut events = Vec::new();
+        poll_once(
+            &client,
+            &state,
+            None,
+            None,
+            Some(&history),
+            "0.1.13",
+            &mut sig,
+            false,
+            &mut gank,
+            &mut |e| events.push(e),
+        )
+        .await;
+
+        assert!(
+            state.recorder.lock().unwrap().is_none(),
+            "recorder is taken + cleared after the flush"
+        );
+        let saved = history.store().list();
+        assert_eq!(saved.len(), 1, "the finished game was written to disk");
+        assert_eq!(saved[0].self_champion, "Ahri");
+        assert_eq!(saved[0].result, MatchResult::Win);
+        assert_eq!(saved[0].kills, 7);
+        assert!(
+            events.iter().any(|e| matches!(e, PollEvent::MatchSaved(_))),
+            "match-saved is emitted for the new record"
         );
     }
 
@@ -559,6 +721,8 @@ mod tests {
             &state,
             Some(&rules),
             None,
+            None,
+            "test",
             &mut sig,
             true,
             &mut gank,
@@ -589,16 +753,18 @@ mod tests {
             let mut count = |e: PollEvent| match e {
                 PollEvent::ConnectionStatus(_) => status_emits += 1,
                 PollEvent::GameStateChanged(_) => summary_emits += 1,
-                PollEvent::RecommendationUpdated(_) | PollEvent::GankAlert(_) => {}
+                PollEvent::RecommendationUpdated(_)
+                | PollEvent::GankAlert(_)
+                | PollEvent::MatchSaved(_) => {}
             };
             // Two identical in-game polls: status transitions once (NoGame→InGame), and the diff
             // signature is unchanged on the second poll, so the summary fires only once.
             poll_once(
-                &client, &state, None, None, &mut sig, false, &mut gank, &mut count,
+                &client, &state, None, None, None, "test", &mut sig, false, &mut gank, &mut count,
             )
             .await;
             poll_once(
-                &client, &state, None, None, &mut sig, false, &mut gank, &mut count,
+                &client, &state, None, None, None, "test", &mut sig, false, &mut gank, &mut count,
             )
             .await;
         }
