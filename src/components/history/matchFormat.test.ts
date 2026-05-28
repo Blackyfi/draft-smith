@@ -113,4 +113,40 @@ describe("describeEvent", () => {
   it("returns null for events with nothing to show", () => {
     expect(describeEvent(ev({ kind: "MinionsSpawning" }))).toBeNull();
   });
+
+  describe("with a champion resolver", () => {
+    // Maps the raw actor string (full Riot ID) to a champion display name; unknown actors → undefined.
+    const championOf = (s: string) =>
+      ({ "Me#EUW": "Ahri", "Foe#EUW": "Zed" })[s];
+
+    it("annotates each player name with their champion in parentheses", () => {
+      expect(
+        describeEvent(
+          ev({ kind: "ChampionKill", killer: "Me#EUW", victim: "Foe#EUW" }),
+          championOf,
+        ),
+      ).toBe("Me (Ahri) killed Foe (Zed)");
+    });
+
+    it("annotates objective takers too", () => {
+      expect(
+        describeEvent(
+          ev({ kind: "BaronKill", killer: "Me#EUW", stolen: false }),
+          championOf,
+        ),
+      ).toBe("Me (Ahri) took Baron");
+      expect(
+        describeEvent(ev({ kind: "DragonKill", killer: "Me#EUW" }), championOf),
+      ).toBe("Me (Ahri) took Dragon");
+    });
+
+    it("leaves non-player actors (turrets, minions) bare", () => {
+      expect(
+        describeEvent(
+          ev({ kind: "ChampionKill", killer: "Turret_T1_C", victim: "Me#EUW" }),
+          championOf,
+        ),
+      ).toBe("Turret_T1_C killed Me (Ahri)");
+    });
+  });
 });

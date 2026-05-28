@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   Clock,
@@ -13,13 +14,18 @@ import { ItemIcon } from "@/components/icons/ItemIcon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMatch } from "@/hooks/useMatch";
-import { useChampionName, useItemMeta } from "@/hooks/useIcon";
+import {
+  useChampionName,
+  useChampionNames,
+  useItemMeta,
+} from "@/hooks/useIcon";
 import { useSettings } from "@/hooks/useSettings";
 import { slotToKey } from "@/lib/abilityKeys";
 import { useUiStore } from "@/store/ui";
 import type {
   AbilityKeys,
   ItemEvent,
+  LevelEvent,
   MatchPlayer,
   MatchRecord,
   SkillEvent,
@@ -27,12 +33,23 @@ import type {
 
 import {
   RESULT_VISUAL,
+  type ChampionResolver,
   describeEvent,
   formatDuration,
   formatGameMode,
   formatKda,
   formatRelativeDate,
 } from "./matchFormat";
+import { MatchScrubber } from "./MatchScrubber";
+import {
+  type RunningScore,
+  buildNameIndex,
+  eventMarkers,
+  inventoryAt,
+  levelAt,
+  playerForName,
+  runningScores,
+} from "./matchTimeline";
 
 const DEFAULT_ABILITY_KEYS: AbilityKeys = {
   layout: "qwerty",
@@ -40,30 +57,63 @@ const DEFAULT_ABILITY_KEYS: AbilityKeys = {
   movementMode: "mouse",
 };
 
+const ZERO_SCORE: RunningScore = { kills: 0, deaths: 0, assists: 0 };
+
 /** Section wrapper with a consistent muted uppercase heading (matches the dashboard panels). */
 function Section({
   title,
   Icon,
   children,
+  aside,
 }: {
   title: string;
   Icon: typeof Clock;
   children: React.ReactNode;
+  aside?: React.ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         <Icon className="size-3.5" aria-hidden="true" />
         {title}
+        {aside}
       </h2>
       {children}
     </section>
   );
 }
 
-/** One scoreboard row. Resolves the champion display name and renders the final item set. */
-function PlayerScoreRow({ player }: { player: MatchPlayer }) {
+/**
+ * One scoreboard row. At the live (end-of-game) position it shows the final items + scoreline; while
+ * scrubbing it shows the inventory, running K/D/A, and champion level reconstructed at that moment.
+ */
+function PlayerScoreRow({
+  player,
+  isLive,
+  itemTimeline,
+  levelTimeline,
+  scrubTime,
+  score,
+}: {
+  player: MatchPlayer;
+  isLive: boolean;
+  itemTimeline: ItemEvent[];
+  levelTimeline: LevelEvent[];
+  scrubTime: number;
+  score: RunningScore;
+}) {
   const champion = useChampionName(player.champion);
+  const items = isLive
+    ? player.finalItems.map((i) => ({ id: i.id, name: i.name }))
+    : inventoryAt(itemTimeline, player.key, scrubTime);
+  const subtitle = isLive
+    ? `${formatKda(player.kills, player.deaths, player.assists)} · ${player.creepScore} CS`
+    : `${formatKda(score.kills, score.deaths, score.assists)} · Lv ${levelAt(
+        levelTimeline,
+        player.key,
+        scrubTime,
+      )}`;
+
   return (
     <li
       className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
@@ -85,12 +135,11 @@ function PlayerScoreRow({ player }: { player: MatchPlayer }) {
           )}
         </span>
         <span className="text-[11px] text-muted-foreground tabular-nums">
-          {formatKda(player.kills, player.deaths, player.assists)} ·{" "}
-          {player.creepScore} CS
+          {subtitle}
         </span>
       </div>
       <div className="flex shrink-0 flex-wrap justify-end gap-0.5">
-        {player.finalItems.map((item, i) => (
+        {items.map((item, i) => (
           <ItemIcon
             key={`${item.id}-${i}`}
             itemId={item.id}
@@ -104,14 +153,38 @@ function PlayerScoreRow({ player }: { player: MatchPlayer }) {
 }
 
 /** Both teams as compact scoreboards; the local player's team is shown first. */
-function Scoreboard({ players }: { players: MatchPlayer[] }) {
+function Scoreboard({
+  players,
+  isLive,
+  itemTimeline,
+  levelTimeline,
+  scrubTime,
+  scores,
+}: {
+  players: MatchPlayer[];
+  isLive: boolean;
+  itemTimeline: ItemEvent[];
+  levelTimeline: LevelEvent[];
+  scrubTime: number;
+  scores: Map<string, RunningScore>;
+}) {
   const selfTeam = players.find((p) => p.isSelf)?.team;
   const teams = [...new Set(players.map((p) => p.team).filter(Boolean))].sort(
     (a, b) => Number(b === selfTeam) - Number(a === selfTeam),
   );
 
   return (
-    <Section title="Scoreboard" Icon={Users}>
+    <Section
+      title="Scoreboard"
+      Icon={Users}
+      aside={
+        !isLive && (
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground normal-case tabular-nums">
+            @ {formatDuration(scrubTime)}
+          </span>
+        )
+      }
+    >
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {teams.map((team) => (
           <ul key={team} className="flex flex-col gap-1">
@@ -121,7 +194,15 @@ function Scoreboard({ players }: { players: MatchPlayer[] }) {
             {players
               .filter((p) => p.team === team)
               .map((p) => (
-                <PlayerScoreRow key={p.key} player={p} />
+                <PlayerScoreRow
+                  key={p.key}
+                  player={p}
+                  isLive={isLive}
+                  itemTimeline={itemTimeline}
+                  levelTimeline={levelTimeline}
+                  scrubTime={scrubTime}
+                  score={scores.get(p.key) ?? ZERO_SCORE}
+                />
               ))}
           </ul>
         ))}
@@ -130,12 +211,27 @@ function Scoreboard({ players }: { players: MatchPlayer[] }) {
   );
 }
 
-/** One build-timeline tile: item icon + resolved name + acquisition time. */
-function BuildItem({ event }: { event: ItemEvent }) {
+/** One build-timeline tile: order badge + item icon + resolved name + acquisition time. */
+function BuildItem({
+  event,
+  order,
+  dim,
+}: {
+  event: ItemEvent;
+  order: number;
+  dim: boolean;
+}) {
   const { data: meta } = useItemMeta(event.itemId);
   const name = event.name || meta?.name || String(event.itemId);
   return (
-    <li className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5">
+    <li
+      className={`flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 transition-opacity ${
+        dim ? "opacity-40" : ""
+      }`}
+    >
+      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded bg-muted px-1 text-[11px] font-semibold text-muted-foreground tabular-nums">
+        #{order}
+      </span>
       <ItemIcon itemId={event.itemId} name={name} className="size-7 rounded" />
       <span className="min-w-0 flex-1 truncate text-xs">{name}</span>
       <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
@@ -145,13 +241,18 @@ function BuildItem({ event }: { event: ItemEvent }) {
   );
 }
 
-/** The local player's purchases over time (acquisitions only; removals are noise here). */
+/**
+ * The local player's purchases over time, numbered in acquisition order. Items not yet bought at the
+ * current scrubber position are dimmed (removals are noise here and excluded).
+ */
 function BuildTimeline({
   itemTimeline,
   selfKey,
+  scrubTime,
 }: {
   itemTimeline: ItemEvent[];
   selfKey: string | undefined;
+  scrubTime: number;
 }) {
   const acquisitions = itemTimeline.filter(
     (e) => e.playerKey === selfKey && e.kind === "acquired",
@@ -161,7 +262,12 @@ function BuildTimeline({
     <Section title="Your build" Icon={ShoppingBag}>
       <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {acquisitions.map((e, i) => (
-          <BuildItem key={`${e.itemId}-${i}`} event={e} />
+          <BuildItem
+            key={`${e.itemId}-${i}`}
+            event={e}
+            order={i + 1}
+            dim={e.gameTime > scrubTime}
+          />
         ))}
       </ul>
     </Section>
@@ -198,10 +304,22 @@ function SkillOrder({ skillTimeline }: { skillTimeline: SkillEvent[] }) {
   );
 }
 
-/** Chronological kill/objective/game log (events with nothing to show are dropped). */
-function EventLog({ events }: { events: MatchRecord["events"] }) {
+/**
+ * Chronological kill/objective/game log. Each player name is annotated with their champion via
+ * `championOf`; lines past the scrubber position are hidden so the log reveals as you scrub forward.
+ */
+function EventLog({
+  events,
+  championOf,
+  scrubTime,
+}: {
+  events: MatchRecord["events"];
+  championOf: ChampionResolver;
+  scrubTime: number;
+}) {
   const lines = events
-    .map((e) => ({ time: e.gameTime, text: describeEvent(e) }))
+    .filter((e) => e.gameTime <= scrubTime)
+    .map((e) => ({ time: e.gameTime, text: describeEvent(e, championOf) }))
     .filter((l): l is { time: number; text: string } => l.text !== null);
   if (lines.length === 0) return null;
   return (
@@ -268,16 +386,82 @@ function DetailHeader({ match }: { match: MatchRecord }) {
   );
 }
 
+/** The body of a loaded match: the replay scrubber drives every time-aware panel below it. */
+function MatchBody({ match }: { match: MatchRecord }) {
+  const duration = match.durationSeconds;
+  const selfKey = match.players.find((p) => p.isSelf)?.key;
+
+  // `null` = the live/final position; any number is a scrubbed-back game time. The parent keys this
+  // component on the match id, so opening another record remounts it and starts fresh at the end.
+  const [scrub, setScrub] = useState<number | null>(null);
+  const scrubTime = scrub ?? duration;
+  const isLive = scrub === null || scrub >= duration;
+
+  const nameIndex = useMemo(
+    () => buildNameIndex(match.players),
+    [match.players],
+  );
+  const championNames = useChampionNames(match.players.map((p) => p.champion));
+  const championOf = useMemo<ChampionResolver>(
+    () => (name) => {
+      const player = playerForName(nameIndex, name);
+      if (!player) return undefined;
+      return championNames.get(player.champion) ?? player.champion;
+    },
+    [nameIndex, championNames],
+  );
+
+  const markers = useMemo(() => eventMarkers(match.events), [match.events]);
+  const scores = useMemo(
+    () => runningScores(match.events, nameIndex, match.players, scrubTime),
+    [match.events, nameIndex, match.players, scrubTime],
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Always-visible scrubber: sticks to the top of the scroll area as the page scrolls. */}
+      <div className="sticky top-0 z-20 -mx-3 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <MatchScrubber
+          duration={duration}
+          value={scrubTime}
+          onChange={setScrub}
+          markers={markers}
+        />
+      </div>
+
+      <DetailHeader match={match} />
+      <Scoreboard
+        players={match.players}
+        isLive={isLive}
+        itemTimeline={match.itemTimeline}
+        levelTimeline={match.levelTimeline}
+        scrubTime={scrubTime}
+        scores={scores}
+      />
+      <BuildTimeline
+        itemTimeline={match.itemTimeline}
+        selfKey={selfKey}
+        scrubTime={scrubTime}
+      />
+      <SkillOrder skillTimeline={match.skillTimeline} />
+      <EventLog
+        events={match.events}
+        championOf={championOf}
+        scrubTime={scrubTime}
+      />
+    </div>
+  );
+}
+
 /**
- * The Match Detail view (Part A): full scoreboard, the local player's build + skill timelines, and a
- * chronological event log for one recorded game. Back returns to the history list.
+ * The Match Detail view: a full scoreboard, the local player's build + skill timelines, and a
+ * chronological event log for one recorded game, with a replay scrubber that rewinds every panel to
+ * any moment of the match. Back returns to the history list.
  */
 export function MatchDetail() {
   const selectedMatchId = useUiStore((s) => s.selectedMatchId);
   const closeMatch = useUiStore((s) => s.closeMatch);
   const { data: match, isLoading } = useMatch(selectedMatchId);
-
-  const selfKey = match?.players.find((p) => p.isSelf)?.key;
 
   return (
     <div className="flex min-h-full w-full flex-col gap-3 p-3">
@@ -305,13 +489,7 @@ export function MatchDetail() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          <DetailHeader match={match} />
-          <Scoreboard players={match.players} />
-          <BuildTimeline itemTimeline={match.itemTimeline} selfKey={selfKey} />
-          <SkillOrder skillTimeline={match.skillTimeline} />
-          <EventLog events={match.events} />
-        </div>
+        <MatchBody key={match.id} match={match} />
       )}
     </div>
   );
