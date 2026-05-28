@@ -188,6 +188,33 @@ pub async fn reset_ddragon_cache(app: AppHandle) -> DdragonStatus {
     refresh_ddragon(&app, true).await
 }
 
+/// Total size on disk of the DDragon cache (item/champion JSON + downloaded icons), in bytes.
+/// Best-effort: unreadable entries are skipped and a missing cache is 0. Surfaced in Settings so the
+/// user can see how much "Reset cache" will clear. Walks the dir off the IPC thread.
+#[tauri::command]
+pub async fn get_ddragon_cache_size(state: State<'_, DdragonState>) -> Result<u64, String> {
+    let root = state.cache_root.clone();
+    tokio::task::spawn_blocking(move || dir_size(&root))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Recursively sums the byte size of every file under `path`. Best-effort: unreadable entries are
+/// skipped; a missing path contributes 0.
+fn dir_size(path: &std::path::Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(path) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .map(|entry| match entry.metadata() {
+            Ok(meta) if meta.is_dir() => dir_size(&entry.path()),
+            Ok(meta) => meta.len(),
+            Err(_) => 0,
+        })
+        .sum()
+}
+
 /// Returns the patch version of the currently loaded DDragon data, or `None` if none is loaded yet
 /// (or the lock is momentarily held by the bootstrap). A synchronous command keeps the FE contract
 /// `Option<String>` rather than `Result<…>`; `try_read` never blocks the IPC thread.

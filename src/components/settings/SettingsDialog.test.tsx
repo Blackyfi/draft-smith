@@ -205,4 +205,12 @@ describe("SettingsDialog", () => {
       await screen.findByText("Patch cache cleared and rebuilt"),
     ).toBeInTheDocument();
   });
+
+  it("shows the DDragon cache size in the Reset cache button", async () => {
+    tauri.invokeHandlers["get_ddragon_cache_size"] = () => 5 * 1024 * 1024; // 5.0 MB
+    renderDialog();
+    expect(
+      await screen.findByRole("button", { name: /reset cache \(5\.0 MB\)/i }),
+    ).toBeInTheDocument();
+  });
 });

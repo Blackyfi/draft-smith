@@ -109,6 +109,7 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::reset_ddragon_cache,
+            commands::get_ddragon_cache_size,
             commands::get_ddragon_version,
         ])
         .run(tauri::generate_context!())
