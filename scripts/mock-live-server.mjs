@@ -249,9 +249,12 @@ const escalationSteps = [
     addEvent("FirstBlood", { Recipient: "Zed" });
     addEvent("ChampionKill", { KillerName: "Zed", VictimName: "Ahri", Assisters: [] });
   },
-  // Darius wins a lane trade (1/0) and starts stacking bulk.
+  // Darius wins a lane trade (1/0) and starts stacking bulk. Zed also grabs MR boots into the AP
+  // mid matchup — Mercury's Treads (+20 MR) — so the player (Ahri, AP) should see Zed's magic resist
+  // rise in the enemy threat panel's durability estimate (the exact MR read-out from the bug report).
   () => {
     buy("Darius", 3053, "Sterak's Gage"); //          → health-stacking (frontline bulk)
+    buy("Zed", 3111, "Mercury's Treads"); //          → +20 MR on the enemy mid (vs Ahri's magic dmg)
     score("Darius", { kills: 1 });
     addEvent("ChampionKill", { KillerName: "Darius", VictimName: "Leona", Assisters: [] });
   },
