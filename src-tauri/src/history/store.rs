@@ -52,11 +52,7 @@ impl MatchStore {
             })
             .collect();
         // Newest first (then by id for a stable tiebreak on equal timestamps).
-        summaries.sort_by(|a, b| {
-            b.recorded_at
-                .cmp(&a.recorded_at)
-                .then_with(|| b.id.cmp(&a.id))
-        });
+        summaries.sort_by(|a, b| b.ended_at.cmp(&a.ended_at).then_with(|| b.id.cmp(&a.id)));
         summaries
     }
 
@@ -120,10 +116,11 @@ mod tests {
     use crate::history::model::MatchResult;
     use tempfile::tempdir;
 
-    fn sample(id: &str, recorded_at: i64) -> MatchRecord {
+    fn sample(id: &str, ended_at: i64) -> MatchRecord {
         MatchRecord {
             id: id.into(),
-            recorded_at,
+            started_at: ended_at - 1_000_000,
+            ended_at,
             app_version: "0.1.13".into(),
             patch: "16.11.1".into(),
             game_mode: "CLASSIC".into(),

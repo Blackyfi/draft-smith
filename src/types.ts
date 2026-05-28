@@ -558,10 +558,12 @@ export interface MatchPlayer {
 
 /** Mirrors `MatchRecord` — a fully recorded match; body of `get_match`. */
 export interface MatchRecord {
-  /** Unique id (`<recordedAtMs>_<selfChampion>`), also the file stem. */
+  /** Unique id (`<endedAtMs>_<selfChampion>`), also the file stem. */
   id: string;
-  /** Wall-clock flush time, Unix epoch milliseconds. */
-  recordedAt: number;
+  /** Wall-clock time recording began (first in-game observation), Unix epoch ms. */
+  startedAt: number;
+  /** Wall-clock time the game ended / the record was flushed, Unix epoch ms. */
+  endedAt: number;
   /** DraftSmith version that produced the record. */
   appVersion: string;
   /** DDragon patch the game was played on. */
@@ -588,7 +590,8 @@ export interface MatchRecord {
  */
 export interface MatchSummary {
   id: string;
-  recordedAt: number;
+  /** Wall-clock time the game ended, Unix epoch ms (the list sorts on this). */
+  endedAt: number;
   selfChampion: string;
   result: MatchResult;
   durationSeconds: number;

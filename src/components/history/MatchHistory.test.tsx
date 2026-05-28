@@ -27,7 +27,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 const SUMMARIES: MatchSummary[] = [
   {
     id: "200_Ahri",
-    recordedAt: 200,
+    endedAt: 200,
     selfChampion: "Ahri",
     result: "win",
     durationSeconds: 1694,
@@ -39,7 +39,7 @@ const SUMMARIES: MatchSummary[] = [
   },
   {
     id: "100_Zed",
-    recordedAt: 100,
+    endedAt: 100,
     selfChampion: "Zed",
     result: "loss",
     durationSeconds: 900,

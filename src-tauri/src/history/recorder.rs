@@ -21,6 +21,22 @@ use super::model::{
 /// and not saved. Keeps the history free of dodge/reconnect noise.
 pub const MIN_DURATION_SECS: f64 = 60.0;
 
+/// The sentinel `gameMode` the dev mock server advertises so its games are never written to the
+/// user's real match history. The mock replays a real `CLASSIC` payload over the actual Live Client
+/// origin (`127.0.0.1:2999`), so it is otherwise indistinguishable from a real game — this sentinel
+/// is the one thing that marks it. Mirrored in `scripts/mock-live-server.mjs`.
+pub const MOCK_GAME_MODE: &str = "DRAFTSMITHMOCK";
+
+/// Game modes that are never recorded — they aren't real matches: the in-client Tutorial and
+/// Practice Tool, and the dev mock. Compared case-insensitively against the Live Client `gameMode`.
+const NON_RECORDABLE_MODES: [&str; 3] = ["TUTORIAL", "PRACTICETOOL", MOCK_GAME_MODE];
+
+/// Whether a game in `mode` should be persisted to match history. An empty/unknown mode is
+/// recordable (a real game always reports one; we never want to silently drop real matches).
+fn is_recordable_mode(mode: &str) -> bool {
+    !NON_RECORDABLE_MODES.contains(&mode.to_ascii_uppercase().as_str())
+}
+
 /// Per-player running state: latest identity + scoreline, plus the diff trackers the timelines
 /// derive from.
 #[derive(Debug, Clone, Default)]
@@ -71,10 +87,22 @@ pub struct MatchRecorder {
     seen_event_ids: HashSet<u32>,
     result: MatchResult,
 
+    /// Wall-clock time (Unix epoch ms) recording began. Supplied by the poller at creation — the
+    /// recorder never reads the clock itself, preserving its clockless/testable design.
+    started_at: i64,
     observed: bool,
 }
 
 impl MatchRecorder {
+    /// Creates a recorder stamped with the wall-clock time recording began (the poller passes
+    /// `SystemTime::now()`; the recorder itself stays clock-free).
+    pub fn starting_at(started_at: i64) -> Self {
+        Self {
+            started_at,
+            ..Self::default()
+        }
+    }
+
     /// Folds one `/allgamedata` snapshot into the running record. Idempotent on unchanged input
     /// (no spurious timeline entries), so the poller can call it every poll, not just on a diff.
     pub fn observe(&mut self, data: &AllGameData) {
@@ -246,16 +274,21 @@ impl MatchRecorder {
         }
     }
 
-    /// Whether this recorder holds a game worth persisting (a real, identified game past the floor).
+    /// Whether this recorder holds a game worth persisting: a real, identified game past the
+    /// duration floor and in a recordable mode (not the dev mock / Tutorial / Practice Tool).
     pub fn is_worth_saving(&self) -> bool {
-        self.observed && self.self_key.is_some() && self.max_game_time >= MIN_DURATION_SECS
+        self.observed
+            && self.self_key.is_some()
+            && self.max_game_time >= MIN_DURATION_SECS
+            && is_recordable_mode(&self.game_mode)
     }
 
-    /// Finalizes into a [`MatchRecord`]. The caller supplies the wall-clock time, app version, and
-    /// patch (the recorder is clockless/IO-free by design).
-    pub fn into_record(self, recorded_at: i64, app_version: String, patch: String) -> MatchRecord {
+    /// Finalizes into a [`MatchRecord`]. The caller supplies the game-end wall-clock time (`ended_at`,
+    /// paired with the `started_at` stamped at creation), app version, and patch — the recorder is
+    /// clockless/IO-free by design.
+    pub fn into_record(self, ended_at: i64, app_version: String, patch: String) -> MatchRecord {
         let self_champion = self.self_champion.clone().unwrap_or_default();
-        let id = make_id(recorded_at, &self_champion);
+        let id = make_id(ended_at, &self_champion);
 
         let players = self
             .player_order
@@ -285,7 +318,8 @@ impl MatchRecorder {
 
         MatchRecord {
             id,
-            recorded_at,
+            started_at: self.started_at,
+            ended_at,
             app_version,
             patch,
             game_mode: self.game_mode,
@@ -497,6 +531,40 @@ mod tests {
         assert_eq!(removals.len(), 1);
         assert_eq!(removals[0].item_id, 2003);
         assert_eq!(removals[0].game_time, 60.0);
+    }
+
+    #[test]
+    fn non_match_modes_are_not_recorded() {
+        // A long, fully-identified game is still dropped if its mode is the dev mock, the Practice
+        // Tool, or a Tutorial — none are real matches and must never reach the user's history.
+        let payload = |mode: &str| {
+            format!(
+                r#"{{ "activePlayer": {{ "riotIdGameName": "Me" }},
+                      "allPlayers": [ {{ "championName": "Ahri", "riotId": "Me#EUW", "team": "ORDER", "level": 9 }} ],
+                      "gameData": {{ "gameMode": "{mode}", "gameTime": 900.0 }} }}"#
+            )
+        };
+        for mode in ["DRAFTSMITHMOCK", "PRACTICETOOL", "TUTORIAL", "practicetool"] {
+            let mut rec = MatchRecorder::default();
+            rec.observe(&parse(&payload(mode)));
+            assert!(
+                !rec.is_worth_saving(),
+                "{mode} must not be saved to match history"
+            );
+        }
+        // A real matchmade mode of the same length is still recorded.
+        let mut real = MatchRecorder::default();
+        real.observe(&parse(&payload("CLASSIC")));
+        assert!(real.is_worth_saving());
+    }
+
+    #[test]
+    fn started_at_is_carried_into_the_record() {
+        let mut rec = MatchRecorder::starting_at(111);
+        rec.observe(&parse(&snapshot(120.0, "[]", 1, 2, "[]")));
+        let record = rec.into_record(999, "v".into(), "p".into());
+        assert_eq!(record.started_at, 111);
+        assert_eq!(record.ended_at, 999);
     }
 
     #[test]

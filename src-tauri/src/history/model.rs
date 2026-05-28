@@ -139,10 +139,15 @@ pub struct MatchPlayer {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchRecord {
-    /// Unique id (`<recordedAtMs>_<selfChampion>`), also the file stem.
+    /// Unique id (`<endedAtMs>_<selfChampion>`), also the file stem.
     pub id: String,
-    /// Wall-clock time the record was flushed, Unix epoch milliseconds.
-    pub recorded_at: i64,
+    /// Wall-clock time recording began (first in-game observation), Unix epoch milliseconds.
+    /// `#[serde(default)]` so records written before this field existed still load (as 0).
+    #[serde(default)]
+    pub started_at: i64,
+    /// Wall-clock time the game ended / the record was flushed, Unix epoch milliseconds.
+    #[serde(default)]
+    pub ended_at: i64,
     /// DraftSmith version that produced the record.
     pub app_version: String,
     /// DDragon patch the game was played on (e.g. "16.11.1").
@@ -173,7 +178,8 @@ pub struct MatchRecord {
 #[serde(rename_all = "camelCase")]
 pub struct MatchSummary {
     pub id: String,
-    pub recorded_at: i64,
+    /// Wall-clock time the game ended, Unix epoch milliseconds (the list sorts on this).
+    pub ended_at: i64,
     pub self_champion: String,
     pub result: MatchResult,
     pub duration_seconds: f64,
@@ -190,7 +196,7 @@ impl MatchRecord {
         let me = self.players.iter().find(|p| p.is_self);
         MatchSummary {
             id: self.id.clone(),
-            recorded_at: self.recorded_at,
+            ended_at: self.ended_at,
             self_champion: self.self_champion.clone(),
             result: self.result,
             duration_seconds: self.duration_seconds,
