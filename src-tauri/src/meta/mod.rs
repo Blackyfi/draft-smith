@@ -56,6 +56,61 @@ pub async fn ensure_overview(
     serde_json::from_slice(&bytes).map_err(|e| MetaError::Parse(e.to_string()))
 }
 
+/// Fetches the champion's overview from the newest patch u.gg actually serves, returning the parsed
+/// JSON **plus the DDragon version it corresponds to** (so the caller can label the build honestly).
+///
+/// u.gg lags DDragon: for a day or two after a patch ships, the current patch 403/404s while the
+/// previous one still has data. So we try the current patch first and, only on a network failure
+/// (the stale-patch 403/404, or offline), fall back to the immediately previous patch. A non-network
+/// error (missing version, a real parse/IO fault) is returned as-is — falling back wouldn't help.
+async fn overview_with_fallback(
+    cache: &MetaCache,
+    fetcher: &MetaFetcher,
+    ddragon_version: &str,
+    champion_key: u32,
+) -> Result<(serde_json::Value, String)> {
+    let mut last_err = None;
+    for version in fallback_versions(ddragon_version) {
+        match ensure_overview(cache, fetcher, &version, champion_key).await {
+            Ok(overview) => return Ok((overview, version)),
+            Err(MetaError::Network(err)) => {
+                log::debug!(
+                    "meta: overview unavailable for patch {version} (champ {champion_key}): {err}; \
+                     trying the previous patch"
+                );
+                last_err = Some(MetaError::Network(err));
+            }
+            // MissingVersion / Parse / Io: a previous patch can't fix these.
+            Err(other) => return Err(other),
+        }
+    }
+    Err(last_err.unwrap_or(MetaError::MissingVersion))
+}
+
+/// The DDragon versions to try for a u.gg overview, newest first: the current patch, then the
+/// immediately previous minor. Stops at a season boundary (minor ≤ 1) rather than guessing across
+/// it. Only the major.minor matter downstream (`ugg_patch` / `patch_label`), so the previous entry
+/// drops the hotfix component.
+fn fallback_versions(ddragon_version: &str) -> Vec<String> {
+    let mut out = vec![ddragon_version.to_string()];
+    if let Some(prev) = previous_minor(ddragon_version) {
+        out.push(prev);
+    }
+    out
+}
+
+/// `"16.11.1"` -> `Some("16.10")`. `None` when the version has no parseable minor or the minor is
+/// ≤ 1 (a season rollover, where the previous patch number isn't derivable from the string alone).
+fn previous_minor(version: &str) -> Option<String> {
+    let mut parts = version.split('.');
+    let major = parts.next()?;
+    let minor: u32 = parts.next()?.trim().parse().ok()?;
+    if minor <= 1 {
+        return None;
+    }
+    Some(format!("{major}.{}", minor - 1))
+}
+
 /// Resolves a [`MetaBuild`] for `champion` (a DDragon id like "Ahri", the form the Live Client
 /// passes), `role` (a friendly name; `None` => the primary/most-played role), and `rank` (a friendly
 /// name such as "diamond_plus"; an unknown value falls back to Diamond+).
@@ -79,8 +134,12 @@ pub async fn build_for(
     // Echo back the DDragon id (canonical), regardless of which form the caller passed.
     let champion_id = champ.id.clone();
 
-    let overview = ensure_overview(cache, fetcher, &ddragon.version, champion_key).await?;
-    let patch = patch_label(&ddragon.version);
+    // u.gg lags DDragon: a freshly-released patch 403s for a day or two. Fetch the newest patch u.gg
+    // actually serves — the current one, or the immediately previous if the current is unpublished —
+    // and label the build with whichever patch we used.
+    let (overview, used_version) =
+        overview_with_fallback(cache, fetcher, &ddragon.version, champion_key).await?;
+    let patch = patch_label(&used_version);
 
     Ok(parse::build_for(
         &overview,
@@ -148,6 +207,74 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn fallback_versions_lists_current_then_previous_minor() {
+        assert_eq!(
+            fallback_versions("16.11.1"),
+            vec!["16.11.1".to_string(), "16.10".to_string()]
+        );
+        // Season boundary (minor 1): don't guess the previous patch number.
+        assert_eq!(fallback_versions("16.1.1"), vec!["16.1.1".to_string()]);
+        // Unparseable: just the current string, no fallback.
+        assert_eq!(fallback_versions("oddball"), vec!["oddball".to_string()]);
+    }
+
+    /// The real u.gg-lag scenario: u.gg serves the previous patch (16_10) but 404s the current one
+    /// (16_11). The fallback must fetch 16_10 and report it as the patch used — and must NOT
+    /// negatively cache the unpublished current patch (so it picks up real data once u.gg catches up).
+    #[tokio::test]
+    async fn overview_falls_back_to_previous_patch_when_current_is_unpublished() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(MetaFetcher::overview_path("16_10", 103)))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(OVERVIEW, "application/json"))
+            .mount(&server)
+            .await;
+        // The current patch (16_11) is intentionally unmounted → the mock answers 404.
+
+        let dir = tempdir().unwrap();
+        let cache = MetaCache::new(dir.path());
+        let fetcher = MetaFetcher::with_base(server.uri()).unwrap();
+
+        let (overview, used) = overview_with_fallback(&cache, &fetcher, "16.11.1", 103)
+            .await
+            .expect("falls back to the previous patch");
+        assert_eq!(
+            used, "16.10",
+            "the build is labeled with the patch actually served"
+        );
+        assert!(
+            overview.get("12").is_some(),
+            "previous-patch overview parsed"
+        );
+        assert!(cache.has_overview("16_10", 103), "previous patch cached");
+        assert!(
+            !cache.has_overview("16_11", 103),
+            "the unpublished current patch must not be negatively cached"
+        );
+    }
+
+    /// When u.gg has the current patch, the fallback is never reached — current data is used and
+    /// labeled with the current patch.
+    #[tokio::test]
+    async fn overview_uses_current_patch_when_available() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(MetaFetcher::overview_path("16_11", 103)))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(OVERVIEW, "application/json"))
+            .mount(&server)
+            .await;
+
+        let dir = tempdir().unwrap();
+        let cache = MetaCache::new(dir.path());
+        let fetcher = MetaFetcher::with_base(server.uri()).unwrap();
+
+        let (_, used) = overview_with_fallback(&cache, &fetcher, "16.11.1", 103)
+            .await
+            .unwrap();
+        assert_eq!(used, "16.11.1");
     }
 
     #[tokio::test]

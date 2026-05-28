@@ -14,6 +14,9 @@ All notable changes to DraftSmith are listed here. Newest first.
 ### Fixes
 - **No more false "error" between games** — while you're in champ select or the loading screen, the
   app now shows the calm "no game" state instead of briefly flashing an error.
+- **Meta panel keeps working right after a patch** — when the stats source hasn't published the
+  brand-new patch yet, the panel now shows the most recent available patch's build (labeled with
+  that patch) instead of going blank, and switches over automatically once the new patch lands.
 
 ## 0.1.13
 
