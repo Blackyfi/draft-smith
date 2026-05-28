@@ -81,12 +81,30 @@ export const RESULT_VISUAL: Record<
 };
 
 /**
- * A short, human-readable line for one game event (kill / objective / game end). The killer/victim
- * fields are Riot IDs ("Name#TAG") or summoner names — we strip the tag for display. Returns `null`
- * for events with nothing worth showing in the log (e.g. MinionsSpawning).
+ * Resolves a raw event actor string (a Riot ID, summoner name, or join key) to the champion display
+ * name to show after their name, e.g. `"Foe#EUW"` → `"Zed"`. Returns `undefined`/empty for
+ * non-player actors (turrets, minions) so they render with no parenthetical.
  */
-export function describeEvent(ev: MatchEvent): string | null {
-  const name = (s?: string) => (s ? s.split("#")[0] : "");
+export type ChampionResolver = (name: string) => string | undefined;
+
+/**
+ * A short, human-readable line for one game event (kill / objective / game end). The killer/victim
+ * fields are Riot IDs ("Name#TAG") or summoner names — we strip the tag for display. When
+ * `championOf` is supplied, each player name is annotated with their champion in parentheses
+ * (e.g. "Me (Ahri) killed Foe (Zed)"); without it, names render bare (the original behavior).
+ * Returns `null` for events with nothing worth showing in the log (e.g. MinionsSpawning).
+ */
+export function describeEvent(
+  ev: MatchEvent,
+  championOf?: ChampionResolver,
+): string | null {
+  // Strip the "#TAG", then append " (Champion)" when a resolver maps this actor to a champion.
+  const label = (s?: string) => {
+    if (!s) return "";
+    const display = s.split("#")[0];
+    const champ = championOf?.(s);
+    return champ ? `${display} (${champ})` : display;
+  };
   switch (ev.kind) {
     case "GameStart":
       return "Game start";
@@ -94,29 +112,29 @@ export function describeEvent(ev: MatchEvent): string | null {
       return "Game end";
     case "FirstBlood":
       return ev.recipient
-        ? `First blood — ${name(ev.recipient)}`
+        ? `First blood — ${label(ev.recipient)}`
         : "First blood";
     case "ChampionKill":
-      return `${name(ev.killer)} killed ${name(ev.victim)}`;
+      return `${label(ev.killer)} killed ${label(ev.victim)}`;
     case "Multikill":
-      return ev.killer ? `${name(ev.killer)} multikill` : "Multikill";
+      return ev.killer ? `${label(ev.killer)} multikill` : "Multikill";
     case "Ace":
-      return ev.recipient ? `Ace — ${name(ev.recipient)}` : "Ace";
+      return ev.recipient ? `Ace — ${label(ev.recipient)}` : "Ace";
     case "DragonKill": {
       const which = ev.dragonType ? `${ev.dragonType} Dragon` : "Dragon";
       const stolen = ev.stolen ? " (stolen)" : "";
-      return `${name(ev.killer)} took ${which}${stolen}`;
+      return `${label(ev.killer)} took ${which}${stolen}`;
     }
     case "HeraldKill":
-      return `${name(ev.killer)} took Rift Herald`;
+      return `${label(ev.killer)} took Rift Herald`;
     case "BaronKill": {
       const stolen = ev.stolen ? " (stolen)" : "";
-      return `${name(ev.killer)} took Baron${stolen}`;
+      return `${label(ev.killer)} took Baron${stolen}`;
     }
     case "TurretKilled":
-      return `${name(ev.killer)} destroyed a turret`;
+      return `${label(ev.killer)} destroyed a turret`;
     case "InhibKilled":
-      return `${name(ev.killer)} destroyed an inhibitor`;
+      return `${label(ev.killer)} destroyed an inhibitor`;
     case "FirstBrick":
       return "First turret destroyed";
     default:

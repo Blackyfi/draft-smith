@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { useDdragonReady } from "@/hooks/useDdragonVersion";
 import { api } from "@/lib/tauri";
@@ -49,6 +50,33 @@ export function useChampionName(name: string | null | undefined): string {
     retry: false,
   });
   return data ?? name ?? "";
+}
+
+/**
+ * Resolves many champion ids → friendly display names at once, returned as a `Map<id, name>` that
+ * always holds an entry for every requested id (falling back to the id itself until resolved or when
+ * unknown). Shares the per-id query cache with {@link useChampionName} (same `["champion-name", id]`
+ * key), so a roster already rendered via that hook resolves here for free. Used to annotate the
+ * event log with each actor's champion. Gated on {@link useDdragonReady} for cache parity.
+ */
+export function useChampionNames(ids: string[]): Map<string, string> {
+  const ready = useDdragonReady();
+  // Stable, de-duplicated id list so the query set doesn't churn on re-render.
+  const unique = useMemo(() => [...new Set(ids.filter((id) => id))], [ids]);
+  const results = useQueries({
+    queries: unique.map((id) => ({
+      queryKey: ["champion-name", id],
+      queryFn: () => api.getChampionDisplayName(id),
+      enabled: ready,
+      staleTime: Infinity,
+      retry: false,
+    })),
+  });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    unique.forEach((id, i) => map.set(id, results[i]?.data ?? id));
+    return map;
+  }, [unique, results]);
 }
 
 /**

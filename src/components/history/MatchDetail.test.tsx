@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MatchDetail } from "@/components/history/MatchDetail";
@@ -169,8 +169,30 @@ describe("MatchDetail", () => {
     // Skill order key badge
     expect(screen.getByText("Q")).toBeInTheDocument();
 
-    // Event log line (champion kill, tags stripped)
-    expect(screen.getByText("Me killed Foe")).toBeInTheDocument();
+    // Event log line: tags stripped, each player annotated with their champion
+    expect(screen.getByText("Me (Ahri) killed Foe (Zed)")).toBeInTheDocument();
+
+    // Build item carries its purchase-order badge
+    expect(screen.getByText("#1")).toBeInTheDocument();
+  });
+
+  it("rewinds the event log when the timeline is scrubbed back", async () => {
+    tauri.invokeHandlers["get_match"] = () => RECORD;
+    renderDetail();
+
+    // The kill (at 600s) is visible at the live/final position.
+    expect(
+      await screen.findByText("Me (Ahri) killed Foe (Zed)"),
+    ).toBeInTheDocument();
+
+    // Scrub to 300s — before the kill — and it disappears from the revealed log.
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "300" } });
+    expect(
+      screen.queryByText("Me (Ahri) killed Foe (Zed)"),
+    ).not.toBeInTheDocument();
+
+    // A point-in-time marker confirms the scrubbed view.
+    expect(screen.getByText("@ 5:00")).toBeInTheDocument();
   });
 
   it("shows a not-found state when the match is gone", async () => {
