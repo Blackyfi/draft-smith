@@ -171,6 +171,10 @@ pub struct Durability {
     pub ability_slot: Option<AbilitySlot>,
     pub ability_name: Option<String>,
     pub per_cast_damage: Option<u32>,
+    /// For a hybrid ability (e.g. magic out + true on return), the resist dimension of the
+    /// *secondary* component — so the UI can label it "magic + true" and skip the single-resist
+    /// "% blocked" chip (which is meaningless across two dimensions). `None` for single-type nukes.
+    pub secondary_resist_kind: Option<ResistKind>,
 }
 
 /// A per-enemy view for the threat board (PROJECT_SPEC §6.3): the *why* behind the build, surfaced.

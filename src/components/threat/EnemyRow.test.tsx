@@ -40,6 +40,7 @@ const DURABILITY_WITH_CASTS: Durability = {
   abilitySlot: "Q",
   abilityName: "Orb of Deception",
   perCastDamage: 750,
+  secondaryResistKind: null,
 };
 
 const DURABILITY_NO_CASTS: Durability = {
@@ -52,6 +53,7 @@ const DURABILITY_NO_CASTS: Durability = {
   abilitySlot: null,
   abilityName: null,
   perCastDamage: null,
+  secondaryResistKind: null,
 };
 
 const DURABILITY_TRUE_DMG: Durability = {
@@ -64,6 +66,20 @@ const DURABILITY_TRUE_DMG: Durability = {
   abilitySlot: "Q",
   abilityName: "Orb of Deception",
   perCastDamage: 130,
+  secondaryResistKind: null,
+};
+
+const DURABILITY_HYBRID: Durability = {
+  effectiveHp: 1600,
+  rawHp: 1000,
+  resist: 60,
+  resistAfterPen: 60,
+  resistKind: "magic",
+  castsToKill: 4,
+  abilitySlot: "Q",
+  abilityName: "Orb of Deception",
+  perCastDamage: 250,
+  secondaryResistKind: "none",
 };
 
 function makeThreat(
@@ -244,6 +260,18 @@ describe("EnemyRow durability", () => {
       renderRow(makeThreat("Darius", DURABILITY_NO_CASTS));
       expect(screen.queryByText(/blocked/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/damage blocked/)).not.toBeInTheDocument();
+    });
+
+    it("labels a hybrid ability with both damage words and omits the % blocked badge", () => {
+      // secondaryResistKind set → "magic + true"; single-resist % blocked is meaningless, so hidden.
+      renderRow(makeThreat("Ahri", DURABILITY_HYBRID));
+      expect(
+        screen.getByLabelText("250 magic + true damage per cast"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("magic + true")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/damage blocked by their/),
+      ).not.toBeInTheDocument();
     });
   });
 });

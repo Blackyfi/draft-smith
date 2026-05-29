@@ -2,6 +2,28 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.19
+
+### Improvements
+- **The "casts to kill" estimate is now honest about its limits.** Every durability tooltip now
+  states plainly that it's a rough estimate of a single ability against full HP — it does not count
+  your full combo, and it can't see enemy runes, current HP, shields, or bonus-HP passives (like
+  Cho'Gath's Feast). Read it as a relative gauge, not a guaranteed kill count.
+- **Hybrid abilities are now estimated correctly.** Abilities that deal two damage types in one cast
+  — like Ahri's Q (magic out, true on the way back) or Fizz's Q (magic plus a physical on-hit) — now
+  have each part reduced by its own resist, so the true-damage portion is no longer wrongly blocked
+  by magic resist. These show a "magic + true" label, and the "% blocked" badge is hidden for them
+  (a single resist number is meaningless across two damage types).
+- **Champion ability damage refreshed to the current patch.** Over 100 champions' base damage,
+  scaling and damage type were re-verified against the current patch, so the durability gauge,
+  damage-per-cast and casts-to-kill numbers are more accurate across the roster.
+
+### Fixes
+- **Corrected several champions whose damage was mis-typed.** A number of champions were set to the
+  wrong damage type or scaling stat (for example Yunara's Q was treated as physical attack-damage
+  when it is magic) — these now use the correct type, so their "% blocked" and effective-HP numbers
+  reflect reality.
+
 ## 0.1.18
 
 ### Fixes

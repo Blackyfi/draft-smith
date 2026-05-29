@@ -17,7 +17,14 @@ import {
   ARCHETYPE_LABEL,
   SIGNAL_DESCRIPTION,
 } from "@/lib/labels";
-import type { Durability, EnemyThreatView } from "@/types";
+import type { Durability, EnemyThreatView, ResistKind } from "@/types";
+
+/** Damage word for each resist dimension — used to label hybrid abilities ("magic + true"). */
+const RESIST_WORD: Record<ResistKind, string> = {
+  magic: "magic",
+  armor: "physical",
+  none: "true",
+};
 
 /**
  * Tiny item thumbnail with a tooltip showing the item name, used in the enemy row's item strip.
@@ -144,7 +151,15 @@ function DurabilitySection({
 
   // Inline damage math beside the casts chip (raw → net · resist + % blocked).
   const math = damageMath(durability);
-  const mit = math ? mitigationStyle(math.blockedPct) : null;
+  // A hybrid ability (e.g. magic out + true on return) hits two resist dimensions. A single-resist
+  // "raw → net · resist" breakdown and "% blocked" chip are meaningless across both, so we suppress
+  // them and instead label the combined per-cast damage with both damage words (e.g. "magic + true").
+  const isHybrid = durability.secondaryResistKind != null;
+  const mit = math && !isHybrid ? mitigationStyle(math.blockedPct) : null;
+  const hybridLabel =
+    isHybrid && durability.secondaryResistKind != null
+      ? `${RESIST_WORD[durability.resistKind]} + ${RESIST_WORD[durability.secondaryResistKind]}`
+      : null;
 
   // Gauge with tooltip ────────────────────────────────────────────────────────
   const gaugeTooltipBody =
@@ -165,15 +180,20 @@ function DurabilitySection({
             ~{Math.round(durability.rawHp)} HP &middot;{" "}
             {Math.round(durability.resist)} {resistLabel} (~
             {Math.round(durability.resistAfterPen)} after your pen)
+            {hybridLabel != null
+              ? `, on its ${RESIST_WORD[durability.resistKind]} part`
+              : ""}
           </p>
         )}
         {durability.perCastDamage != null && (
           <p className="mt-0.5 text-muted-foreground">
             ~{Math.round(durability.perCastDamage)} dmg per cast
+            {hybridLabel != null ? ` (${hybridLabel})` : ""}
           </p>
         )}
         <p className="mt-1 text-[11px] text-muted-foreground/70">
-          Estimate — excludes enemy runes &amp; current HP.
+          Rough estimate of one ability vs full HP — ignores your full combo,
+          enemy runes, current HP, shields &amp; bonus-HP passives.
         </p>
       </>
     );
@@ -233,13 +253,19 @@ function DurabilitySection({
                     ~{Math.round(durability.rawHp)} HP &middot;{" "}
                     {Math.round(durability.resist)} {resistLabel} (~
                     {Math.round(durability.resistAfterPen)} after your pen)
+                    {hybridLabel != null
+                      ? `, on its ${RESIST_WORD[durability.resistKind]} part`
+                      : ""}
                   </p>
                 )}
                 <p className="mt-0.5 text-muted-foreground">
                   ~{math.net} dmg per cast
+                  {hybridLabel != null ? ` (${hybridLabel})` : ""}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground/70">
-                  Estimate — excludes enemy runes &amp; current HP.
+                  Rough estimate of one ability vs full HP — ignores your full
+                  combo, enemy runes, current HP, shields &amp; bonus-HP
+                  passives.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -250,12 +276,21 @@ function DurabilitySection({
             variant="outline"
             className="cursor-default gap-0.5 tabular-nums text-muted-foreground"
             aria-label={
-              math.isTrue
-                ? `${math.net} true damage per cast`
-                : `${math.rawCast} raw damage reduced to ${math.net} per cast after ${math.after} ${resistLabel}`
+              hybridLabel != null
+                ? `${math.net} ${hybridLabel} damage per cast`
+                : math.isTrue
+                  ? `${math.net} true damage per cast`
+                  : `${math.rawCast} raw damage reduced to ${math.net} per cast after ${math.after} ${resistLabel}`
             }
           >
-            {math.isTrue ? (
+            {hybridLabel != null ? (
+              <>
+                <span className="font-medium text-foreground">{math.net}</span>
+                <span className="ml-0.5 text-muted-foreground/70">
+                  {hybridLabel}
+                </span>
+              </>
+            ) : math.isTrue ? (
               <>
                 {math.net}
                 <span className="ml-0.5 text-muted-foreground/70">true</span>
@@ -296,7 +331,8 @@ function DurabilitySection({
                   {abilityDisplayName} cast from ~{math.rawCast} to ~{math.net}.
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground/70">
-                  {mit.label} — estimate, excludes runes &amp; current HP.
+                  {mit.label} — rough estimate; ignores your full combo, runes,
+                  current HP, shields &amp; bonus-HP passives.
                 </p>
               </TooltipContent>
             </Tooltip>
