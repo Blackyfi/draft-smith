@@ -1,5 +1,6 @@
 ---
 source: src/engine/corpus.rs
+assertion_line: 124
 expression: rec
 ---
 selfChampion: Ornn
@@ -25,7 +26,7 @@ buildPath:
     owned: false
     reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
   - itemId: 3001
-    name: Abyssal Mask
+    name: Evenshroud
     cost: 2700
     owned: false
     reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
@@ -36,7 +37,7 @@ buildPath:
     reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
 swaps:
   - trigger: If magic damage piles up
-    itemId: 2055
+    itemId: 2504
     name: Kaenic Rookern
     reason: "Counters Syndra, Brand and 3 others (mostly magic damage) — most of their damage is magic."
 threats:
@@ -80,7 +81,7 @@ threats:
     durability: ~
 enemyItems:
   - id: 6655
-    name: "Luden's Companion"
+    name: "Luden's Echo"
     intents:
       - burst_amp
       - ability_haste

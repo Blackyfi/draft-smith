@@ -1,11 +1,12 @@
 ---
 source: src/engine/corpus.rs
+assertion_line: 50
 expression: rec
 ---
 selfChampion: Ahri
 buildPath:
   - itemId: 6655
-    name: "Luden's Companion"
+    name: "Luden's Echo"
     cost: 2900
     owned: true
     reason: Core on Ahri — your reliable power-spike anchor.

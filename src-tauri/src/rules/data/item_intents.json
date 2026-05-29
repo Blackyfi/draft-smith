@@ -8,7 +8,7 @@
     "3111": { "name": "Mercury's Treads", "totalCost": 1200, "isBoots": true, "intentTags": ["mr_self"], "grantsSignals": ["mr-stacking"] },
     "3158": { "name": "Ionian Boots of Lucidity", "totalCost": 950, "isBoots": true, "intentTags": ["ability_haste"] },
 
-    "6655": { "name": "Luden's Companion", "totalCost": 2900, "damageType": "magic", "intentTags": ["burst_amp", "ability_haste"] },
+    "6655": { "name": "Luden's Echo", "totalCost": 2900, "damageType": "magic", "intentTags": ["burst_amp", "ability_haste"] },
     "4645": { "name": "Shadowflame", "totalCost": 3000, "damageType": "magic", "intentTags": ["burst_amp", "magic_pen_flat"] },
     "3157": { "name": "Zhonya's Hourglass", "totalCost": 3250, "damageType": "magic", "intentTags": ["stasis_survival", "armor_self", "burst_amp"] },
     "3102": { "name": "Banshee's Veil", "totalCost": 3100, "damageType": "magic", "intentTags": ["spellshield", "mr_self"] },
@@ -42,10 +42,11 @@
     "3084": { "name": "Heartsteel", "totalCost": 3200, "intentTags": ["health_self"], "grantsSignals": ["health-stacking"] },
     "4401": { "name": "Force of Nature", "totalCost": 2900, "intentTags": ["mr_self", "move_speed"], "grantsSignals": ["mr-stacking"] },
     "3110": { "name": "Frozen Heart", "totalCost": 2500, "intentTags": ["armor_self", "ability_haste"], "grantsSignals": ["armor-stacking"] },
-    "3001": { "name": "Abyssal Mask", "totalCost": 2700, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking", "health-stacking"] },
+    "3001": { "name": "Evenshroud", "totalCost": 2700, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking", "health-stacking"] },
+    "8020": { "name": "Abyssal Mask", "totalCost": 2700, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking", "health-stacking"] },
     "3143": { "name": "Randuin's Omen", "totalCost": 2700, "intentTags": ["armor_self", "health_self"], "grantsSignals": ["armor-stacking", "health-stacking"] },
     "6665": { "name": "Jak'Sho, The Protean", "totalCost": 3200, "intentTags": ["armor_self", "mr_self"], "grantsSignals": ["armor-stacking", "mr-stacking"] },
-    "2055": { "name": "Kaenic Rookern", "totalCost": 2900, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking"] },
+    "2504": { "name": "Kaenic Rookern", "totalCost": 2900, "intentTags": ["mr_self", "health_self"], "grantsSignals": ["mr-stacking"] },
 
     "6692": { "name": "Eclipse", "totalCost": 2900, "damageType": "physical", "intentTags": ["lethality"], "grantsSignals": ["lethality"] },
     "3142": { "name": "Youmuu's Ghostblade", "totalCost": 2700, "damageType": "physical", "intentTags": ["lethality", "move_speed"], "grantsSignals": ["lethality"] },
