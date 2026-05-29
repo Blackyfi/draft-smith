@@ -2,6 +2,16 @@
 
 All notable changes to DraftSmith are listed here. Newest first.
 
+## 0.1.18
+
+### Fixes
+- **A Control Ward is no longer mistaken for a magic-resist item.** A data typo keyed "Kaenic
+  Rookern" to the Control Ward's id, so any enemy holding a ward was shown in the Enemy Items panel
+  as building magic resist against you — and a tanky build could even suggest you buy one. Wards are
+  now correctly ignored, and Kaenic Rookern is recognized by its real id.
+- **Correct item names.** Evenshroud was mislabelled "Abyssal Mask" (and Abyssal Mask itself is now
+  recognized); Luden's is shown as "Luden's Echo".
+
 ## 0.1.17
 
 ### Fixes
