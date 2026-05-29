@@ -293,8 +293,7 @@ async fn poll_once(
                 emit(PollEvent::GameStateChanged(summarize(&data)));
                 // Recompute only on a meaningful change (PROJECT_SPEC §5.2 step 7). Skipped if the
                 // rule set failed to load or the local player isn't identifiable yet.
-                if let Some((rules, mut input)) = rules
-                    .and_then(|rules| EngineInput::from_all_game_data(&data).map(|i| (rules, i)))
+                if let Some((rules, mut input)) = rules.zip(EngineInput::from_all_game_data(&data))
                 {
                     // Resolve enemy defenses from DDragon and inject them so the engine can estimate
                     // durability. Done only here on the `changed` branch (not per poll), and only
