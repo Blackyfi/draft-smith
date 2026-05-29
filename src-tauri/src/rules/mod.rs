@@ -113,9 +113,26 @@ pub enum RatioStat {
     Ad,
 }
 
+/// One damage component of an ability: its base-by-rank table, the live stat its `ratio` scales
+/// off, and the resist it's mitigated by (`damage_type`). The estimator mitigates each component by
+/// its own resist, so a hybrid spell's true-damage portion is never wrongly reduced by MR/armor.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DamageComponent {
+    pub damage_type: DamageType,
+    pub ratio_stat: RatioStat,
+    pub ratio: f32,
+    pub base_by_rank: Vec<f32>,
+}
+
 /// Approximate primary-nuke damage for the casts-to-kill ESTIMATE (advisory; see the JSON
 /// `_comment`). `base_by_rank` is the spell's approximate total base damage at ranks 1–5; `ratio`
 /// scales off `ratio_stat`. Deliberately approximate; adding a champion is an edit to the JSON.
+///
+/// `secondary` is an optional second damage component for genuinely **hybrid** abilities (e.g. a
+/// spell that deals magic on the way out and true on the return). It is `None` for the vast
+/// majority of single-type abilities, so existing entries need no change. When present, the
+/// estimator adds its post-mitigation damage to the primary's — each mitigated by its own resist.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AbilityDamage {
@@ -124,6 +141,8 @@ pub struct AbilityDamage {
     pub ratio_stat: RatioStat,
     pub ratio: f32,
     pub base_by_rank: Vec<f32>,
+    #[serde(default)]
+    pub secondary: Option<DamageComponent>,
 }
 
 #[derive(Debug, Deserialize)]

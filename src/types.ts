@@ -167,8 +167,9 @@ export type ResistKind = "armor" | "magic" | "none";
 
 /**
  * Mirrors `Durability` in `src-tauri/src/model/engine.rs` (serde `camelCase`).
- * Estimated durability of an enemy vs the player's damage type. This is an approximation:
- * it excludes enemy runes and is calculated from full HP.
+ * Estimated durability of an enemy vs the player's damage type. A rough approximation: it models
+ * ONE ability (not the full combo), from full HP, and excludes enemy runes, current HP, shields,
+ * and bonus-HP passives. Read it as a relative gauge, not a literal kill count.
  */
 export interface Durability {
   /** Effective HP factoring in the relevant resistance (after pen). */
@@ -187,8 +188,14 @@ export interface Durability {
   abilitySlot: AbilitySlot | null;
   /** Display name of the ability (from the Live Client), or null when unavailable. */
   abilityName: string | null;
-  /** Estimated damage per cast used for the calculation. */
+  /** Estimated damage per cast used for the calculation (sum across the ability's components). */
   perCastDamage: number | null;
+  /**
+   * For a hybrid ability (e.g. magic out + true on return), the resist dimension of the *secondary*
+   * component — lets the UI label it "magic + true" and drop the single-resist "% blocked" chip
+   * (meaningless across two dimensions). `null` for single-type nukes.
+   */
+  secondaryResistKind: ResistKind | null;
 }
 
 /**
